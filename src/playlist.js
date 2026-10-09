@@ -24,6 +24,15 @@ export function makeSlide(type, mediaId) {
   return { id: newId(), type: 'video', on: true, media: mediaId, fit: 'cover', sound: false }
 }
 
+/** Название слайда для людей. */
+export function slideTitle(it) {
+  if (it.type === 'schedule') {
+    return it.grades?.length ? 'Расписание: ' + it.grades.join(', ') + ' кл.' : 'Расписание: все параллели'
+  }
+  if (it.type === 'changes') return 'Изменения в расписании'
+  return mediaById(it.media)?.name || 'Файл удалён'
+}
+
 /** Сколько раз файл стоит в плейлисте. */
 export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id).length
 

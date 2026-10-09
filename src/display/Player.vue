@@ -5,11 +5,14 @@
 //   next    — следующий, невидимый: фото/видео заранее грузятся, табло уже отрисовано.
 // Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
 // табло само плавно меняет вкладку и тему.
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+// Правила показа (даты, время, дни) проверяются по часам этого компьютера.
+// О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { state, GRADES, hasChanges } from '../store.js'
 import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist } from '../playlist.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
+import { ruleState } from '../rules.js'
 
 startPlaylist()
 
@@ -21,8 +24,11 @@ function boardTabs(it) {
   return gs.filter((g) => (state.settings.letters[g] || []).length)
 }
 
+// время для правил показа; обновляем раз в 10 с — этого хватает, слайды всё равно длиннее
+const now = ref(new Date())
+
 function playable(it) {
-  if (!it.on) return false
+  if (!it.on || !ruleState(it.when, now.value).ok) return false
   if (it.type === 'schedule') return boardTabs(it).length > 0
   if (it.type === 'changes') return !it.skipEmpty || hasChanges()
   return mediaById(it.media)?.type === it.type
@@ -95,9 +101,54 @@ watch(
 const ready = computed(() => playlistLoaded.value && mediaLoaded.value)
 const startTimer = setTimeout(() => !cur.value && advance(), 5000)
 watch(ready, (r) => r && !cur.value && advance(), { immediate: true })
+
+// ---------- отчёт серверу: что сейчас на экране ----------
+// id экрана живёт в localStorage этого браузера; имя можно задать в адресе: /?name=Холл
+const screenId = (() => {
+  const make = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+  try {
+    let id = localStorage.getItem('screen-id')
+    if (!id) localStorage.setItem('screen-id', (id = make()))
+    return id
+  } catch {
+    return make()
+  }
+})()
+const screenName = new URLSearchParams(location.search).get('name') || ''
+const boardTab = ref('') // какую вкладку сейчас показывает табло
+
+function report() {
+  const c = cur.value
+  if (!c) return
+  fetch('/api/screens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: screenId,
+      name: screenName,
+      slide: { id: c.item.id, type: c.item.type, seq: c.seq, tab: isBoard(c.item) ? boardTab.value : '', fallback: c.item.id === FALLBACK.id },
+      w: innerWidth,
+      h: innerHeight,
+    }),
+  }).catch(() => {})
+}
+watch([cur, boardTab], report)
+
+// страницу закрыли или перезагрузили — сразу сообщаем, чтобы редактор не считал экран живым ещё минуту
+const bye = () => navigator.sendBeacon?.('/api/screens', JSON.stringify({ id: screenId, gone: true }))
+
+let clockTimer, reportTimer
+onMounted(() => {
+  clockTimer = setInterval(() => (now.value = new Date()), 10_000)
+  reportTimer = setInterval(report, 30_000)
+  window.addEventListener('pagehide', bye)
+})
 onBeforeUnmount(() => {
+  window.removeEventListener('pagehide', bye)
   clearTimeout(startTimer)
   clearTimeout(leaveTimer)
+  clearInterval(clockTimer)
+  clearInterval(reportTimer)
 })
 </script>
 
@@ -111,6 +162,7 @@ onBeforeUnmount(() => {
         :run="s.seq"
         :playing="s.role === 'active'"
         @done="onDone(s)"
+        @tab="(t) => (boardTab = t)"
       />
       <MediaSlide
         v-else-if="mediaById(s.item.media)"

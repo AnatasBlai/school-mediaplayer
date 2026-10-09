@@ -2,6 +2,7 @@
 //   /api/data    — расписание и настройки (data/schedule.json)
 //   /api/events  — SSE-уведомления (server/events.js)
 //   /api/playlist — плейлист экрана (server/playlist.js)
+//   /api/screens — что сейчас показывают экраны (server/screens.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -9,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { openEvents, broadcast } from './server/events.js'
 import { handleMediaApi, handleMediaFiles } from './server/media.js'
 import { handlePlaylist } from './server/playlist.js'
+import { handleScreens } from './server/screens.js'
 
 export { MIME } from './server/mime.js'
 
@@ -84,6 +86,10 @@ export function handleApi(req, res) {
   }
   if (url === '/api/playlist') {
     handlePlaylist(req, res)
+    return true
+  }
+  if (url === '/api/screens') {
+    handleScreens(req, res)
     return true
   }
   return handleMediaApi(req, res) || handleMediaFiles(req, res)

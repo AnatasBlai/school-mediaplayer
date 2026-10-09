@@ -15,6 +15,22 @@ const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 const TYPES = ['schedule', 'changes', 'image', 'video']
 const GRADES = ['5', '6', '7', '8', '9', '10', '11']
 
+/** Правила показа: период дат, время суток, дни недели (1 — Пн … 7 — Вс). Пусто — показывать всегда. */
+function cleanWhen(w) {
+  if (!w || typeof w !== 'object') return null
+  const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '')
+  const time = (v) => (/^([01]\d|2[0-3]):[0-5]\d$/.test(v || '') ? v : '')
+  const days = Array.isArray(w.days) ? [1, 2, 3, 4, 5, 6, 7].filter((d) => w.days.includes(d)) : []
+  const out = {
+    dateFrom: date(w.dateFrom),
+    dateTo: date(w.dateTo),
+    timeFrom: time(w.timeFrom),
+    timeTo: time(w.timeTo),
+    days: days.length === 7 ? [] : days,
+  }
+  return out.dateFrom || out.dateTo || out.timeFrom || out.timeTo || out.days.length ? out : null
+}
+
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
 const secs = (v, def) => Math.min(3600, Math.max(3, Math.round(Number(v)) || def))
 
@@ -39,6 +55,8 @@ function cleanItem(x) {
     if (x.type === 'image') it.duration = secs(x.duration, 10)
     else it.sound = !!x.sound // видео идёт до конца, длительность не нужна
   }
+  const when = cleanWhen(x.when)
+  if (when) it.when = when
   return it
 }
 

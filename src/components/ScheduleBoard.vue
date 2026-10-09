@@ -36,7 +36,7 @@ const props = defineProps({
   run: { type: Number, default: 0 },
   playing: { type: Boolean, default: true },
 })
-const emit = defineEmits(['done'])
+const emit = defineEmits(['done', 'tab'])
 
 // ---------- масштабирование «табло» 1920×1080 под размер своего блока ----------
 const W = 1920
@@ -105,6 +105,9 @@ function showPos(p) {
   if (i >= 0) tabIdx.value = i
   elapsed.value = 0
 }
+// плееру — для «сейчас на экране» в редакторе
+watch(tab, (t) => emit('tab', t), { immediate: true })
+
 // новый показ слайда — с первой вкладки
 watch(
   () => props.run,

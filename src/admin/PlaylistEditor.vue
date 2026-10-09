@@ -2,24 +2,25 @@
 // Плейлист (/admin#playlist): что и в каком порядке показывает экран. Правки сохраняются сами.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { state, GRADES } from '../store.js'
-import { playlist, playlistLoaded, media, mediaById, makeSlide, startPlaylist, SLIDE_TITLES } from '../playlist.js'
+import { playlist, playlistLoaded, media, mediaById, makeSlide, startPlaylist, slideTitle, SLIDE_TITLES } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
+import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText } from '../rules.js'
+import { onScreenIds } from './screens.js'
+import NowOnScreen from './NowOnScreen.vue'
 
 startPlaylist()
+
+// время для проверки правил — по часам этого компьютера, раз в 15 с
+const now = ref(new Date())
+let clock
+onMounted(() => (clock = setInterval(() => (now.value = new Date()), 15_000)))
+onBeforeUnmount(() => clearInterval(clock))
 
 const items = computed(() => playlist.items)
 
 // ---------- описание слайда ----------
 function fileOf(it) {
   return it.media ? mediaById(it.media) : null
-}
-function titleOf(it) {
-  if (it.type === 'schedule') {
-    const gs = it.grades?.length ? it.grades : null
-    return gs ? 'Расписание: ' + gs.join(', ') + ' кл.' : 'Расписание: все параллели'
-  }
-  if (it.type === 'changes') return 'Изменения в расписании'
-  return fileOf(it)?.name || 'Файл удалён'
 }
 /** Сколько секунд идёт слайд (для итога); видео — по длине файла. */
 function secondsOf(it) {
@@ -30,8 +31,11 @@ function secondsOf(it) {
   if (it.type === 'video') return Math.round(fileOf(it)?.duration || 0)
   return it.duration
 }
-const total = computed(() => items.value.filter((it) => it.on).reduce((s, it) => s + secondsOf(it), 0))
+const ruleOk = (it) => ruleState(it.when, now.value).ok
+// в круг сейчас входят включённые слайды, у которых правила подходят под текущий момент
+const total = computed(() => items.value.filter((it) => it.on && ruleOk(it)).reduce((s, it) => s + secondsOf(it), 0))
 const enabledCount = computed(() => items.value.filter((it) => it.on).length)
+const nowCount = computed(() => items.value.filter((it) => it.on && ruleOk(it)).length)
 
 function fmtTotal(sec) {
   const m = Math.floor(sec / 60)
@@ -54,6 +58,26 @@ function toggleGrade(it, g) {
   it.grades = sorted.length === GRADES.length ? [] : sorted
 }
 const gradeOn = (it, g) => !it.grades?.length || it.grades.includes(g)
+
+// ---------- правила показа ----------
+const openRules = reactive({}) // id слайда → раскрыта ли панель правил
+const whenOf = (it) => ({ ...EMPTY_WHEN, ...(it.when || {}) })
+function setWhen(it, k, v) {
+  const w = { ...whenOf(it), [k]: v }
+  if (w.days.length === 7) w.days = []
+  if (hasRules(w)) it.when = w
+  else delete it.when
+}
+function toggleDay(it, d) {
+  const days = whenOf(it).days.slice()
+  const i = days.indexOf(d)
+  if (i >= 0) days.splice(i, 1)
+  else days.push(d)
+  setWhen(it, 'days', days.sort())
+}
+function clearWhen(it) {
+  delete it.when
+}
 
 function remove(i) {
   playlist.items.splice(i, 1)
@@ -134,13 +158,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <button class="btn" @click="addBoard('changes')">＋ Изменения</button>
       <div class="spacer"></div>
       <div class="sum">
-        Включено слайдов: {{ enabledCount }} из {{ items.length }} · полный круг ≈ {{ fmtTotal(total) }}
+        Включено: {{ enabledCount }} из {{ items.length }} · сейчас по правилам идут {{ nowCount }} · круг ≈ {{ fmtTotal(total) }}
       </div>
     </div>
 
+    <NowOnScreen />
+
     <p class="help">
-      Экран показывает включённые слайды сверху вниз и начинает сначала. Порядок меняется перетаскиванием за ⋮⋮ или
-      стрелками. Изменения сразу уходят на экраны.
+      Экран показывает включённые слайды сверху вниз и начинает сначала. Слайд с правилами («Когда») идёт только в
+      указанные даты, часы и дни. Порядок меняется перетаскиванием за ⋮⋮ или стрелками. Изменения сразу уходят на экраны.
     </p>
 
     <div v-if="playlistLoaded && !items.length" class="empty">
@@ -152,7 +178,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         v-for="(it, i) in items"
         :key="it.id"
         class="row"
-        :class="{ off: !it.on, over: dragOver === i && dragFrom !== i, dragging: dragFrom === i, missing: it.media && !fileOf(it) }"
+        :class="{
+          off: !it.on,
+          waiting: it.on && !ruleOk(it),
+          live: onScreenIds.has(it.id),
+          over: dragOver === i && dragFrom !== i,
+          dragging: dragFrom === i,
+          missing: it.media && !fileOf(it),
+        }"
         @dragover.prevent="onDragOverRow(i)"
         @drop.prevent="onDropRow(i)"
       >
@@ -168,8 +201,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
 
         <div class="main">
-          <div class="title">{{ titleOf(it) }}</div>
-          <div class="kind">{{ SLIDE_TITLES[it.type] }}</div>
+          <div class="title">{{ slideTitle(it) }}</div>
+          <div class="kind">
+            {{ SLIDE_TITLES[it.type] }}
+            <span v-if="onScreenIds.has(it.id)" class="tag live">▶ на экране</span>
+            <span v-else-if="it.on && !ruleOk(it)" class="tag wait">сейчас не идёт: {{ ruleState(it.when, now).reason }}</span>
+          </div>
 
           <!-- настройки по типу слайда -->
           <div class="opts">
@@ -192,6 +229,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <label v-if="it.type === 'video'" class="check">
               <input v-model="it.sound" type="checkbox" /> со звуком
             </label>
+            <button
+              class="when-btn"
+              :class="{ set: hasRules(it.when), open: openRules[it.id] }"
+              title="Когда показывать: даты, время, дни недели"
+              @click="openRules[it.id] = !openRules[it.id]"
+            >
+              Когда: {{ hasRules(it.when) ? rulesText(it.when) : 'всегда' }} {{ openRules[it.id] ? '▴' : '▾' }}
+            </button>
           </div>
         </div>
 
@@ -222,6 +267,39 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <button title="Выше" :disabled="i === 0" @click="moveBy(i, -1)">↑</button>
           <button title="Ниже" :disabled="i === items.length - 1" @click="moveBy(i, 1)">↓</button>
           <button class="del" title="Убрать из плейлиста (файл останется в медиатеке)" @click="remove(i)">✕</button>
+        </div>
+
+        <!-- правила показа -->
+        <div v-if="openRules[it.id]" class="rules">
+          <div class="rule">
+            <span class="rl">Даты</span>
+            с <input type="date" :value="whenOf(it).dateFrom" @change="setWhen(it, 'dateFrom', $event.target.value)" />
+            по <input type="date" :value="whenOf(it).dateTo" @change="setWhen(it, 'dateTo', $event.target.value)" />
+            <span class="hint">включительно; пусто — без ограничения</span>
+          </div>
+          <div class="rule">
+            <span class="rl">Время</span>
+            с <input type="time" :value="whenOf(it).timeFrom" @change="setWhen(it, 'timeFrom', $event.target.value)" />
+            до <input type="time" :value="whenOf(it).timeTo" @change="setWhen(it, 'timeTo', $event.target.value)" />
+            <span class="hint">например, 7:30–8:30; 22:00–6:00 — через полночь</span>
+          </div>
+          <div class="rule">
+            <span class="rl">Дни</span>
+            <span class="grades">
+              <button v-for="(d, di) in DAY_SHORT" :key="d" :class="{ on: whenOf(it).days.includes(di + 1) }" @click="toggleDay(it, di + 1)">
+                {{ d }}
+              </button>
+            </span>
+            <button class="link" @click="setWhen(it, 'days', [1, 2, 3, 4, 5])">Пн–Пт</button>
+            <span class="hint">ни один не выбран — каждый день</span>
+          </div>
+          <div class="rule">
+            <span class="rl"></span>
+            <button class="link" :disabled="!hasRules(it.when)" @click="clearWhen(it)">Сбросить — показывать всегда</button>
+            <span v-if="hasRules(it.when)" class="hint" :class="ruleOk(it) ? 'ok' : 'bad'">
+              {{ ruleOk(it) ? 'Сейчас подходит — слайд в показе' : 'Сейчас не идёт: ' + ruleState(it.when, now).reason }}
+            </span>
+          </div>
         </div>
       </li>
     </ol>
@@ -357,6 +435,109 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .row.off {
   opacity: 0.5;
+}
+.row.waiting .thumb,
+.row.waiting .title {
+  opacity: 0.55;
+}
+.row.live {
+  border-color: #2f7a43;
+}
+.tag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tag.live {
+  background: rgba(63, 174, 90, 0.85);
+  color: #fff;
+}
+.tag.wait {
+  background: rgba(240, 163, 42, 0.18);
+  color: #f0b45a;
+}
+.when-btn {
+  border: 1px dashed #4a505c;
+  border-radius: 7px;
+  padding: 3px 9px;
+  background: transparent;
+  color: #a4a9b3;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.when-btn.set {
+  border-style: solid;
+  border-color: #f0a32a;
+  color: #f0b45a;
+}
+.when-btn.open {
+  background: #31353d;
+}
+.rules {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 2px 60px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1d1f24;
+}
+.rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #c9ccd3;
+  font-weight: 600;
+}
+.rl {
+  width: 56px;
+  color: #7c818b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.rule input {
+  border: 1px solid #3b404a;
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: #15171b;
+  color: #f2f2f2;
+  font: inherit;
+  font-weight: 700;
+  color-scheme: dark;
+}
+.rule input:focus {
+  outline: none;
+  border-color: #3d7be0;
+}
+.rule .hint {
+  color: #7c818b;
+  font-size: 12px;
+}
+.rule .hint.ok {
+  color: #7fd18b;
+}
+.rule .hint.bad {
+  color: #f0b45a;
+}
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #7fb0ff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.link:disabled {
+  color: #5a5f69;
+  cursor: default;
 }
 .row.over {
   border-color: #3d7be0;
