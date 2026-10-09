@@ -109,8 +109,8 @@ watch(
   { deep: true },
 )
 
-/** Подтягивает изменения, сделанные с другого компьютера (например, табло видит правки учителя). */
-export async function pollRemote() {
+/** Подтягивает изменения, сделанные с другого компьютера (например, экран видит правки из редактора). */
+async function pollRemote() {
   try {
     const r = await fetch('/api/data', { cache: 'no-store' })
     if (!r.ok) return
@@ -121,6 +121,35 @@ export async function pollRemote() {
   } catch {
     /* ignore */
   }
+}
+
+// ---------- синхронизация через SSE ----------
+
+export const connected = ref(true) // есть ли связь с сервером (для строки состояния в редакторе)
+
+/**
+ * Загружает данные и подписывается на /api/events: сервер сообщает о каждой правке,
+ * и страница сразу забирает свежие данные.
+ * reloadOnRestart — перезагрузить страницу, если сервер перезапустили (экран так получает новую сборку).
+ */
+export async function startSync({ reloadOnRestart = false } = {}) {
+  await loadData()
+  if (typeof EventSource === 'undefined') return
+  let boot = null
+  const es = new EventSource('/api/events')
+  es.addEventListener('hello', (e) => {
+    connected.value = true
+    const b = JSON.parse(e.data).boot
+    if (boot && b !== boot && reloadOnRestart) return location.reload()
+    // переподключились после обрыва — могли пропустить правки
+    if (boot) pollRemote()
+    boot = b
+  })
+  es.addEventListener('data', (e) => {
+    if ((Number(JSON.parse(e.data).updatedAt) || 0) > state.updatedAt) pollRemote()
+  })
+  // EventSource сам переподключается через 3 с (retry), здесь только отмечаем обрыв
+  es.onerror = () => (connected.value = false)
 }
 
 // ---------- доступ к урокам ----------

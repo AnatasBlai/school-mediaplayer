@@ -6,6 +6,7 @@ const props = defineProps({
   today: Date, // текущая дата (обновляется каждую секунду)
   viewDate: Date, // день, расписание которого показано
   bell: Object, // состояние звонков на сегодня
+  interactive: { type: Boolean, default: true }, // false на экране для зрителей: календарь только показывает
 })
 const emit = defineEmits(['pick', 'today', 'settings'])
 
@@ -70,7 +71,7 @@ function shift(n) {
 </script>
 
 <template>
-  <aside class="panel">
+  <aside class="panel" :class="{ static: !interactive }">
     <div class="day-name">{{ dayName }}</div>
     <div class="date-line">
       <span>{{ dateText }}</span>
@@ -249,6 +250,14 @@ function shift(n) {
   box-shadow: inset 0 0 0 3px var(--accent);
 }
 
+/* экран для зрителей: кнопки не нужны, место оставляем, чтобы раскладка не съехала */
+.panel.static .nav,
+.panel.static .bottom {
+  visibility: hidden;
+}
+.panel.static .day {
+  pointer-events: none;
+}
 .bottom {
   margin-top: auto;
   display: flex;

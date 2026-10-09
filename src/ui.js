@@ -6,6 +6,7 @@ export const ui = reactive({
   editing: false,
   draft: '',
   settingsOpen: false,
+  readonly: false, // экран для зрителей (/): ячейки не выделяются и не редактируются
 })
 
 export function isSel(letter, idx, field) {

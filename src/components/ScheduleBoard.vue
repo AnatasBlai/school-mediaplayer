@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+// Табло расписания 1920×1080. На экране (/) только показывает, в редакторе (/admin) — editable.
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   state,
   GRADES,
@@ -9,24 +10,28 @@ import {
   setChangeField,
   hasChanges,
   maxLessonOfDay,
-  loadData,
-  pollRemote,
-  saveStatus,
-} from './store.js'
-import { ui, clearSelection } from './ui.js'
-import { THEMES, themeBackground } from './themes.js'
-import { bellsForDay, bellStatus } from './bells.js'
-import { vFit } from './fit.js'
-import EditColumn from './components/EditColumn.vue'
-import CalendarPanel from './components/CalendarPanel.vue'
-import SettingsModal from './components/SettingsModal.vue'
+} from '../store.js'
+import { ui, clearSelection } from '../ui.js'
+import { THEMES, themeBackground } from '../themes.js'
+import { bellsForDay, bellStatus } from '../bells.js'
+import { vFit } from '../fit.js'
+import EditColumn from './EditColumn.vue'
+import CalendarPanel from './CalendarPanel.vue'
+// настройки нужны только в редакторе — грузим отдельным файлом, экрану он не нужен
+const SettingsModal = defineAsyncComponent(() => import('./SettingsModal.vue'))
 
-// ---------- масштабирование «табло» 1920×1080 под любой экран ----------
+const props = defineProps({
+  editable: { type: Boolean, default: false },
+})
+
+// ---------- масштабирование «табло» 1920×1080 под размер своего блока ----------
 const W = 1920
 const H = 1080
 const scale = ref(1)
+const root = ref(null)
 function fit() {
-  scale.value = Math.min(window.innerWidth / W, window.innerHeight / H)
+  const el = root.value
+  if (el) scale.value = Math.min(el.clientWidth / W, el.clientHeight / H)
 }
 
 // ---------- фон: если положить public/background.jpg, он подхватится ----------
@@ -79,7 +84,8 @@ const letters = computed(() => (isChanges.value ? [] : state.settings.letters[gr
 const theme = computed(() => THEMES[tab.value] || THEMES[5])
 const tabSeconds = computed(() => (isChanges.value ? state.settings.changesInterval : state.settings.interval))
 const elapsed = ref(0)
-const paused = computed(() => !state.settings.autoplay || !!ui.sel || ui.settingsOpen)
+// в редакторе вкладки не листаются сами — их переключает учитель
+const paused = computed(() => props.editable || !state.settings.autoplay)
 const progress = computed(() => Math.min(1, elapsed.value / (tabSeconds.value * 1000)))
 
 function inRotation(t) {
@@ -292,37 +298,31 @@ const stageVars = computed(() => ({
 const headerTitle = computed(() => (isChanges.value ? 'Изменения' : `${grade.value} классы`))
 
 // ---------- жизненный цикл ----------
-let clockTimer, tickTimer, pollTimer
-onMounted(async () => {
+let clockTimer, tickTimer, resizeObs
+onMounted(() => {
   fit()
-  window.addEventListener('resize', fit)
-  window.addEventListener('keydown', onKey)
-  await loadData()
+  resizeObs = new ResizeObserver(fit)
+  resizeObs.observe(root.value)
+  if (props.editable) window.addEventListener('keydown', onKey)
   clockTimer = setInterval(() => {
     now.value = new Date()
     // через 5 минут без действий табло возвращается к сегодняшнему дню
     if (picked.value && Date.now() - lastInteraction > 5 * 60 * 1000 && !ui.sel) picked.value = null
   }, 1000)
   tickTimer = setInterval(tick, 100)
-  pollTimer = setInterval(() => {
-    if (!ui.sel && !ui.settingsOpen) pollRemote()
-  }, 20000)
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', fit)
+  resizeObs?.disconnect()
   window.removeEventListener('keydown', onKey)
   clearInterval(clockTimer)
   clearInterval(tickTimer)
-  clearInterval(pollTimer)
+  if (ui.editing) commit()
+  clearSelection()
 })
-
-const statusText = computed(
-  () => ({ saving: 'Сохранение…', saved: 'Сохранено', offline: 'Нет связи с сервером — правки только в этом браузере' })[saveStatus.value] || '',
-)
 </script>
 
 <template>
-  <div class="viewport" :style="{ background: theme.base }">
+  <div ref="root" class="viewport" :style="{ background: theme.base }">
     <div class="stage" :style="stageVars" @mousedown="onStageDown">
       <svg width="0" height="0" style="position: absolute">
         <filter id="outline" x="-5%" y="-5%" width="110%" height="110%">
@@ -397,6 +397,7 @@ const statusText = computed(
             :today="now"
             :view-date="viewDate"
             :bell="bell"
+            :interactive="editable"
             @mousedown.stop
             @pick="pickDate"
             @today="picked = null"
@@ -405,17 +406,16 @@ const statusText = computed(
         </main>
       </div>
 
-      <div v-if="statusText && (saveStatus === 'offline' || ui.sel)" class="status" :class="saveStatus">{{ statusText }}</div>
-
-      <SettingsModal v-if="ui.settingsOpen" @mousedown.stop @close="ui.settingsOpen = false" />
+      <SettingsModal v-if="editable && ui.settingsOpen" @mousedown.stop @close="ui.settingsOpen = false" />
     </div>
   </div>
 </template>
 
 <style scoped>
 .viewport {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  overflow: hidden;
   transition: background 0.9s;
 }
 .stage {
@@ -639,21 +639,6 @@ const statusText = computed(
   font-size: 30px;
   line-height: 1.5;
   text-shadow: var(--shadow-text);
-}
-
-.status {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  padding: 4px 16px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
-  font-size: 14px;
-  font-weight: 700;
-}
-.status.offline {
-  background: rgba(150, 30, 10, 0.75);
 }
 
 /* ---------- анимации ---------- */

@@ -20,6 +20,7 @@ const inputRef = ref(null)
 const growIndex = computed(() => props.fields.findIndex((f) => f.grow))
 
 function onCellClick(idx, field) {
+  if (ui.readonly) return
   if (isSel(props.colKey, idx, field)) {
     if (!ui.editing) startEdit()
     return

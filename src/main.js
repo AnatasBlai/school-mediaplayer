@@ -6,6 +6,26 @@ import '@fontsource/montserrat/latin-800.css'
 import '@fontsource/montserrat/cyrillic-900.css'
 import '@fontsource/montserrat/latin-900.css'
 import './style.css'
-import App from './App.vue'
+import { startSync } from './store.js'
+import { ui } from './ui.js'
 
-createApp(App).mount('#app')
+// Без роутера: /admin — редактор, всё остальное — экран для зрителей.
+// Код редактора грузится отдельным файлом, экрану он не нужен.
+const isAdmin = /^\/admin(\/|$)/.test(location.pathname)
+
+async function boot() {
+  let App
+  if (isAdmin) {
+    document.title = 'Редактор экранов'
+    App = (await import('./admin/AdminApp.vue')).default
+  } else {
+    document.title = 'Экран'
+    ui.readonly = true
+    App = (await import('./DisplayApp.vue')).default
+  }
+  // экран перезагружается после перезапуска сервера, чтобы подхватить новую сборку;
+  // редактор — нет, чтобы не потерять набранный текст
+  startSync({ reloadOnRestart: !isAdmin })
+  createApp(App).mount('#app')
+}
+boot()
