@@ -5,7 +5,7 @@
 import { computed, ref, watch } from 'vue'
 import { decks, decksLoaded, deckById, makeDeck, makeCard, cardSeconds, startDecks } from '../decks.js'
 import { CARD_TYPES, LETTERS, parseCards, cardsToText, newCardId } from '../deckText.js'
-import { playlist, makeSlide, mediaById, thumbUrl, startPlaylist } from '../playlist.js'
+import { playlist, makeSlide, mediaById, thumbUrl, startPlaylist, layoutOf } from '../playlist.js'
 import DeckCard from '../display/DeckCard.vue'
 import MediaPicker from './MediaPicker.vue'
 import ThemeSwatches from './ThemeSwatches.vue'
@@ -89,6 +89,11 @@ const previewCard = computed(() => {
   return cards.find((c) => c.id === previewId.value) || cards[0] || null
 })
 const previewPhase = ref('q')
+// шаблон в превью — как у первого слайда этой колоды в плейлисте, иначе общий
+const previewLayout = computed(() => {
+  const it = playlist.items.find((x) => x.type === 'deck' && x.deck === deck.value?.id)
+  return it ? layoutOf(it) : playlist.layout
+})
 const previewTotal = computed(() => (deck.value && previewCard.value ? cardSeconds(deck.value, previewCard.value) : 0))
 
 // ---------- вставка списком ----------
@@ -262,7 +267,7 @@ async function copyText() {
       <aside class="preview">
         <span class="a-label">Так будет на экране</span>
         <div class="screen">
-          <DeckCard v-if="previewCard" :deck="deck" :card="previewCard" :phase="previewPhase" :left="previewPhase === 'a' ? deck.aTime : previewCard.type === 'fact' ? deck.factTime : deck.qTime" />
+          <DeckCard v-if="previewCard" :deck="deck" :card="previewCard" :layout="previewLayout" :phase="previewPhase" :left="previewPhase === 'a' ? deck.aTime : previewCard.type === 'fact' ? deck.factTime : deck.qTime" />
         </div>
         <div v-if="previewCard && previewCard.type !== 'fact'" class="a-seg">
           <button :class="{ on: previewPhase === 'q' }" @click="previewPhase = 'q'">Вопрос</button>

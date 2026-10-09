@@ -6,7 +6,8 @@
 // Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
 // табло само плавно меняет вкладку и тему.
 // Правила показа (даты, время, дни) проверяются по часам этого компьютера.
-// Фото/видео идут по шаблону (layoutOf): на весь экран или с панелью справа — панель рисует сам MediaSlide.
+// Фото, видео, новости и колоды идут по шаблону (layoutOf): на весь экран или с панелью справа —
+// панель рисует сам слайд (MediaSlide поверх превью, NewsSlide/DeckCard — внутри своей сцены).
 // О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { state, GRADES, hasChanges } from '../store.js'
@@ -172,8 +173,20 @@ onBeforeUnmount(() => {
         @done="onDone(s)"
         @tab="(t) => (boardTab = t)"
       />
-      <NewsSlide v-else-if="s.item.type === 'news'" :item="s.item" :active="s.role === 'active'" @done="onDone(s)" />
-      <DeckSlide v-else-if="s.item.type === 'deck'" :item="s.item" :active="s.role === 'active'" @done="onDone(s)" />
+      <NewsSlide
+        v-else-if="s.item.type === 'news'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <DeckSlide
+        v-else-if="s.item.type === 'deck'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
       <MediaSlide
         v-else-if="mediaById(s.item.media)"
         :item="s.item"

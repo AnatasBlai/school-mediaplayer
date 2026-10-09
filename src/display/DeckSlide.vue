@@ -10,6 +10,7 @@ import DeckCard from './DeckCard.vue'
 const props = defineProps({
   item: Object, // слайд плейлиста type: 'deck'
   active: Boolean,
+  layout: { type: String, default: 'full' },
 })
 const emit = defineEmits(['done'])
 
@@ -82,5 +83,6 @@ onBeforeUnmount(stop)
     :phase="phase"
     :left="(phaseLen - elapsed) / 1000"
     :progress="elapsed / phaseLen"
+    :layout="layout"
   />
 </template>

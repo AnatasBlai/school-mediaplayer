@@ -14,7 +14,7 @@ const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
 const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'deck']
 const THEMES = ['5', '6', '7', '8', '9', '10', '11', 'changes']
-// шаблон фото/видео: весь экран или медиа слева + панель справа (часы, звонки, изменения)
+// шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
 const GRADES = ['5', '6', '7', '8', '9', '10', '11']
@@ -74,8 +74,9 @@ function cleanItem(x) {
     it.fit = x.fit === 'contain' ? 'contain' : 'cover'
     if (x.type === 'image') it.duration = secs(x.duration, 10)
     else it.sound = !!x.sound // видео идёт до конца, длительность не нужна
-    if (LAYOUTS.includes(x.layout)) it.layout = x.layout // нет поля — как общий шаблон плейлиста
   }
+  // шаблон у фото, видео, новости и колоды; нет поля — как общий шаблон плейлиста
+  if (x.type !== 'schedule' && x.type !== 'changes' && LAYOUTS.includes(x.layout)) it.layout = x.layout
   const when = cleanWhen(x.when)
   if (when) it.when = when
   return it

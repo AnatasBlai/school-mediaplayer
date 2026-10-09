@@ -1,10 +1,13 @@
 <script setup>
 // Панель справа для шаблона «С панелью»: день недели, дата, часы, звонок и изменения в расписании.
 // Рисуется на холсте 440×1080 и масштабируется по высоте своего блока (как табло 1920×1080).
+// inStage — панель лежит внутри сцены SlideStage (новость, колода): без своего масштаба, справа на сцене.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { state, maxLessonOfDay } from '../store.js'
 import { bellsForDay, bellStatus, plural } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
+
+const props = defineProps({ inStage: Boolean })
 
 const W = 440
 const H = 1080
@@ -13,7 +16,7 @@ const MAX_ROWS = 7 // больше строк изменений в панель
 const root = ref(null)
 const scale = ref(1)
 function fit() {
-  if (root.value) scale.value = root.value.clientHeight / H
+  if (root.value && !props.inStage) scale.value = root.value.clientHeight / H
 }
 
 const now = ref(new Date())
@@ -55,7 +58,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="root" class="info-panel">
+  <aside ref="root" class="info-panel" :class="{ 'in-stage': inStage }">
     <div class="canvas" :style="{ width: W + 'px', height: H + 'px', transform: `scale(${scale})` }">
       <div class="card">
         <div class="day-name">{{ dayName }}</div>
@@ -92,6 +95,11 @@ onBeforeUnmount(() => {
   --accent: #ffd27a;
   --shadow-text: 0 2px 6px rgba(0, 0, 0, 0.55);
   --tab-text: #5a3208;
+}
+.info-panel.in-stage {
+  width: 440px;
+  height: 1080px;
+  bottom: auto;
 }
 .canvas {
   position: absolute;

@@ -2,7 +2,7 @@
 // Окно правки новости: форма слева, живое превью справа. Правки сразу пишутся в слайд плейлиста
 // (и уходят на экраны, как любая правка плейлиста).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { mediaById, thumbUrl } from '../playlist.js'
+import { mediaById, thumbUrl, layoutOf } from '../playlist.js'
 import NewsSlide from '../display/NewsSlide.vue'
 import MediaPicker from './MediaPicker.vue'
 import ThemeSwatches from './ThemeSwatches.vue'
@@ -106,7 +106,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
         <div class="preview">
           <span class="a-label">Так будет на экране</span>
-          <div class="screen"><NewsSlide :item="item" :active="false" /></div>
+          <div class="screen"><NewsSlide :item="item" :active="false" :layout="layoutOf(item)" /></div>
         </div>
       </div>
     </div>

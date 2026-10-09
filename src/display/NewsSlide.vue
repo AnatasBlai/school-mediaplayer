@@ -5,10 +5,12 @@
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { mediaById, mediaUrl, thumbUrl } from '../playlist.js'
 import SlideStage from '../components/SlideStage.vue'
+import InfoPanel from './InfoPanel.vue'
 
 const props = defineProps({
   item: Object, // слайд плейлиста type: 'news'
   active: Boolean,
+  layout: { type: String, default: 'full' }, // 'panel' — справа панель с часами, звонками, изменениями
 })
 const emit = defineEmits(['done'])
 
@@ -17,15 +19,16 @@ const photo = computed(() => (file.value?.type === 'image' ? file.value : null))
 
 // размер шрифта по длине текста: длинный заголовок и текст мельче, чтобы влезли
 const pick = (len, steps) => steps.find(([max]) => len <= max)?.[1] ?? steps[steps.length - 1][1]
+const panel = computed(() => props.layout === 'panel')
 const titleSize = computed(() => {
   const n = (props.item.title || '').length
   const s = pick(n, [[24, 96], [45, 80], [80, 64], [120, 54], [999, 46]])
-  return Math.round(s * (photo.value ? 0.85 : 1)) + 'px'
+  return Math.round(s * (photo.value ? 0.85 : 1) * (panel.value ? 0.85 : 1)) + 'px'
 })
 const textSize = computed(() => {
   const n = (props.item.text || '').length
   const s = pick(n, [[120, 44], [250, 38], [400, 33], [600, 29], [999, 26]])
-  return Math.round(s * (photo.value ? 0.9 : 1)) + 'px'
+  return Math.round(s * (photo.value ? 0.9 : 1) * (panel.value ? 0.9 : 1)) + 'px'
 })
 
 let timer = null
@@ -43,7 +46,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <SlideStage :theme="item.theme">
-    <div class="news" :class="{ 'with-photo': photo }">
+    <div class="news" :class="{ 'with-photo': photo, panel }">
       <div v-if="photo" class="photo" :class="item.fit">
         <div v-if="item.fit === 'contain'" class="back" :style="{ backgroundImage: `url(&quot;${thumbUrl(photo)}&quot;)` }"></div>
         <img :src="mediaUrl(photo)" alt="" />
@@ -57,6 +60,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         <div v-if="item.text" class="text" :style="{ fontSize: textSize }">{{ item.text }}</div>
       </div>
     </div>
+    <InfoPanel v-if="panel" in-stage />
   </SlideStage>
 </template>
 
@@ -67,6 +71,10 @@ onBeforeUnmount(() => clearTimeout(timer))
   display: flex;
   gap: 30px;
 }
+/* место справа — под панель 440 px (у её карточки свой отступ 30 px) */
+.news.panel {
+  right: 440px;
+}
 .photo {
   position: relative;
   flex: 0 0 900px;
@@ -74,6 +82,9 @@ onBeforeUnmount(() => clearTimeout(timer))
   overflow: hidden;
   background: rgba(0, 0, 0, 0.3);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.panel .photo {
+  flex-basis: 640px;
 }
 .photo img {
   position: absolute;

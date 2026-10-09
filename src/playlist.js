@@ -37,10 +37,12 @@ export function makeSlide(type, mediaId) {
   return { id: newId(), type: 'video', on: true, media: mediaId, fit: 'cover', sound: false }
 }
 
-// шаблон фото/видео: 'full' — весь экран, 'panel' — медиа слева, справа панель с часами, звонками и изменениями
+// шаблон слайда: 'full' — весь экран, 'panel' — содержимое слева, справа панель с часами, звонками и изменениями
 export const LAYOUT_TITLES = { full: 'Весь экран', panel: 'С панелью справа' }
-/** Шаблон, по которому слайд реально показывается: свой у слайда или общий. Табло всегда во весь экран. */
-export const layoutOf = (it) => (it.type === 'image' || it.type === 'video' ? it.layout || playlist.layout || 'full' : 'full')
+/** Есть ли у слайда шаблон (фото, видео, новость, колода). Табло расписания всегда во весь экран. */
+export const hasLayout = (it) => ['image', 'video', 'news', 'deck'].includes(it.type)
+/** Шаблон, по которому слайд реально показывается: свой у слайда или общий. */
+export const layoutOf = (it) => (hasLayout(it) ? it.layout || playlist.layout || 'full' : 'full')
 
 /** Название слайда для людей. */
 export function slideTitle(it) {

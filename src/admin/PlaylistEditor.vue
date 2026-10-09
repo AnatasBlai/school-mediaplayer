@@ -12,6 +12,7 @@ import {
   slideTitle,
   SLIDE_TITLES,
   LAYOUT_TITLES,
+  hasLayout,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
 import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText } from '../rules.js'
@@ -218,7 +219,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <NowOnScreen />
 
     <div class="layout-bar">
-      <span class="lb-title">Шаблон фото и видео:</span>
+      <span class="lb-title">Шаблон слайдов:</span>
       <button
         v-for="(t, k) in LAYOUT_TITLES"
         :key="k"
@@ -230,7 +231,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         {{ t }}
       </button>
       <span class="hint">
-        {{ playlist.layout === 'panel' ? 'справа — день, часы, звонок и изменения в расписании' : 'файл занимает весь экран' }}.
+        Для фото, видео, новостей и колод:
+        {{ playlist.layout === 'panel' ? 'справа — день, часы, звонок и изменения в расписании' : 'слайд занимает весь экран' }}.
         У отдельного слайда шаблон можно поменять. Табло расписания всегда во весь экран.
       </span>
     </div>
@@ -320,7 +322,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <input v-model="it.sound" type="checkbox" /> со звуком
             </label>
             <select
-              v-if="it.type === 'image' || it.type === 'video'"
+              v-if="hasLayout(it)"
               class="layout-sel"
               :class="{ own: it.layout }"
               title="Шаблон экрана для этого слайда"

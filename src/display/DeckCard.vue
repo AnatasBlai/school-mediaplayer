@@ -8,6 +8,7 @@ import { computed } from 'vue'
 import { mediaById, mediaUrl } from '../playlist.js'
 import { LETTERS } from '../deckText.js'
 import SlideStage from '../components/SlideStage.vue'
+import InfoPanel from './InfoPanel.vue'
 
 const props = defineProps({
   deck: Object,
@@ -15,7 +16,9 @@ const props = defineProps({
   phase: { type: String, default: 'q' }, // 'q' — вопрос, 'a' — ответ
   left: { type: Number, default: null }, // секунд до конца фазы (для таймера)
   progress: { type: Number, default: 0 }, // 0…1 — сколько фазы прошло
+  layout: { type: String, default: 'full' }, // 'panel' — справа панель с часами, звонками, изменениями
 })
+const panel = computed(() => props.layout === 'panel')
 
 const photo = computed(() => {
   const m = props.card.media ? mediaById(props.card.media) : null
@@ -29,7 +32,7 @@ const kindText = computed(() => {
 const options = computed(() => (props.card.options || []).map((o, i) => ({ o, i })).filter((x) => x.o))
 
 const pick = (len, steps) => steps.find(([max]) => len <= max)?.[1] ?? steps[steps.length - 1][1]
-const k = computed(() => (photo.value ? 0.82 : 1))
+const k = computed(() => (photo.value ? 0.82 : 1) * (panel.value ? 0.88 : 1))
 const mainSize = computed(() => {
   const n = (props.card.text || '').length
   const steps =
@@ -48,7 +51,7 @@ const optSize = computed(() => {
 
 <template>
   <SlideStage :theme="deck.theme">
-    <div class="deck-card" :class="[card.type, { reveal, 'with-photo': photo }]">
+    <div class="deck-card" :class="[card.type, { reveal, 'with-photo': photo, panel }]">
       <header class="head">
         <span class="deck-name">{{ deck.name }}</span>
         <span v-if="kindText" class="kind">{{ kindText }}</span>
@@ -91,6 +94,7 @@ const optSize = computed(() => {
         </div>
       </div>
     </div>
+    <InfoPanel v-if="panel" in-stage />
   </SlideStage>
 </template>
 
@@ -103,6 +107,16 @@ const optSize = computed(() => {
   gap: 26px;
 }
 
+/* место справа — под панель 440 px */
+.deck-card.panel {
+  right: 440px;
+}
+.panel .photo {
+  flex-basis: 520px;
+}
+.panel .deck-name {
+  font-size: 46px;
+}
 .head,
 .content {
   border-radius: 56px;
