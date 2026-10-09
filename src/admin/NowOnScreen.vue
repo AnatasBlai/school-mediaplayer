@@ -34,7 +34,8 @@ function view(s) {
   const board = sl.type === 'schedule' || sl.type === 'changes'
   const file = item?.media ? mediaById(item.media) : null
   let title
-  if (sl.fallback) title = 'Расписание — в плейлисте сейчас нечего показать'
+  if (sl.type === 'blank') title = 'Экран погашен по расписанию'
+  else if (sl.fallback) title = 'Расписание — в плейлисте сейчас нечего показать'
   else if (item) title = slideTitle(item)
   else title = 'Слайд уже убран из плейлиста'
   const tab = board && sl.tab ? (sl.tab === 'changes' ? 'вкладка «Изменения»' : `сейчас ${sl.tab}-е классы`) : ''
@@ -42,7 +43,7 @@ function view(s) {
     title,
     tab,
     thumb: file ? thumbUrl(file) : '',
-    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'news' && !file ? 'Нов.' : '',
+    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : '',
     cls: sl.type,
     num: item ? playlist.items.indexOf(item) + 1 : 0,
   }

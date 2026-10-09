@@ -16,7 +16,7 @@ import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
 import NewsSlide from './NewsSlide.vue'
 import DeckSlide from './DeckSlide.vue'
-import { ruleState } from '../rules.js'
+import { ruleState, isBlanked } from '../rules.js'
 import { decksLoaded, deckById, startDecks } from '../decks.js'
 
 startPlaylist()
@@ -84,8 +84,17 @@ const slots = computed(() => {
   return list.sort((a, b) => a.seq - b.seq)
 })
 
+// гашение экрана по расписанию: слайды убираются совсем (видео не играет), остаётся чёрный экран
+const blanked = computed(() => isBlanked(playlist.blank, now.value))
+watch(blanked, (b) => {
+  if (b) {
+    cur.value = leaving.value = null
+  } else if (ready.value) advance()
+})
+
 let leaveTimer = null
 function advance() {
+  if (blanked.value) return
   const old = cur.value
   const n = old ? next.value : slot(following(null), 1)
   cur.value = n
@@ -128,20 +137,24 @@ const boardTab = ref('') // какую вкладку сейчас показы�
 
 function report() {
   const c = cur.value
+  if (blanked.value) return send({ id: 'blank', type: 'blank', seq: 0, tab: '', fallback: false })
   if (!c) return
+  send({ id: c.item.id, type: c.item.type, seq: c.seq, tab: isBoard(c.item) ? boardTab.value : '', fallback: c.item.id === FALLBACK.id })
+}
+function send(slide) {
   fetch('/api/screens', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       id: screenId,
       name: screenName,
-      slide: { id: c.item.id, type: c.item.type, seq: c.seq, tab: isBoard(c.item) ? boardTab.value : '', fallback: c.item.id === FALLBACK.id },
+      slide,
       w: innerWidth,
       h: innerHeight,
     }),
   }).catch(() => {})
 }
-watch([cur, boardTab], report)
+watch([cur, boardTab, blanked], report)
 
 // страницу закрыли или перезагрузили — сразу сообщаем, чтобы редактор не считал экран живым ещё минуту
 const bye = () => navigator.sendBeacon?.('/api/screens', JSON.stringify({ id: screenId, gone: true }))
@@ -163,6 +176,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="player">
+    <div v-if="blanked" class="blank"></div>
     <div v-for="s in slots" :key="s.key" class="slide" :class="s.role">
       <ScheduleBoard
         v-if="isBoard(s.item)"
@@ -206,6 +220,12 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: #000;
   cursor: none;
+}
+.blank {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #000;
 }
 .slide {
   position: absolute;

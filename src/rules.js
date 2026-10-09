@@ -35,6 +35,15 @@ export function ruleState(w, now = new Date()) {
   return { ok: true, reason: '' }
 }
 
+/**
+ * Гашение экрана: blank = { on, periods: [{ timeFrom, timeTo, days }] }. Экран погашен, если подходит хоть один
+ * период. Период без времени — весь день (в указанные дни); совсем пустой период не считается.
+ */
+export function isBlanked(blank, now = new Date()) {
+  if (!blank?.on) return false
+  return (blank.periods || []).some((p) => hasRules(p) && ruleState(p, now).ok)
+}
+
 /** Короткое описание правил: «с 12.10 по 20.10 · 8:00–12:00 · Пн, Ср». */
 export function rulesText(w) {
   if (!hasRules(w)) return ''

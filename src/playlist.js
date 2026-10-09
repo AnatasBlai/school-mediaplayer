@@ -4,7 +4,8 @@ import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
 import { deckById } from './decks.js'
 
-export const playlist = reactive({ updatedAt: 0, layout: 'full', items: [] })
+// blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
+export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, items: [] })
 export const playlistLoaded = ref(false)
 export const mediaLoaded = ref(false)
 export const media = ref([]) // элементы медиатеки (data/media.json)
@@ -62,12 +63,13 @@ export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id
 
 let applying = false
 let lastProbe = ''
-const probeOf = () => JSON.stringify([playlist.layout, playlist.items])
+const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.items])
 
 function apply(d) {
   applying = true
   playlist.updatedAt = Number(d.updatedAt) || 0
   playlist.layout = d.layout === 'panel' ? 'panel' : 'full'
+  playlist.blank = { on: !!d.blank?.on, periods: Array.isArray(d.blank?.periods) ? d.blank.periods : [] }
   playlist.items = Array.isArray(d.items) ? d.items : []
   lastProbe = probeOf()
   playlistLoaded.value = true

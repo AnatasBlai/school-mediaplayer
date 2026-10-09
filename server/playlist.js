@@ -1,5 +1,5 @@
 // Плейлист экрана: порядок слайдов, длительность, вкл/выкл — data/playlist.json.
-//   GET /api/playlist  → { version, updatedAt, layout, items }; если файла нет — плейлист по умолчанию
+//   GET /api/playlist  → { version, updatedAt, layout, blank, items }; если файла нет — плейлист по умолчанию
 //                        из старых настроек автолистания (schedule.json), на диск он попадает при первом PUT
 //   PUT /api/playlist  — весь плейлист целиком (как /api/data), сервер проверяет и чистит поля
 import fs from 'node:fs'
@@ -33,6 +33,16 @@ function cleanWhen(w) {
     days: days.length === 7 ? [] : days,
   }
   return out.dateFrom || out.dateTo || out.timeFrom || out.timeTo || out.days.length ? out : null
+}
+
+/** Гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } — без дат, до 10 периодов. */
+function cleanBlank(b) {
+  const periods = (Array.isArray(b?.periods) ? b.periods : [])
+    .slice(0, 10)
+    .map((p) => cleanWhen({ timeFrom: p?.timeFrom, timeTo: p?.timeTo, days: p?.days }))
+    .filter(Boolean)
+    .map(({ timeFrom, timeTo, days }) => ({ timeFrom, timeTo, days }))
+  return { on: !!b?.on, periods }
 }
 
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
@@ -94,6 +104,7 @@ function defaultPlaylist() {
     version: 1,
     updatedAt: 0,
     layout: 'full',
+    blank: cleanBlank(null),
     items: [
       cleanItem({ id: 'schedule0', type: 'schedule', duration: s.interval }),
       cleanItem({
@@ -114,6 +125,7 @@ export function readPlaylist() {
       version: 1,
       updatedAt: Number(d.updatedAt) || 0,
       layout: cleanLayout(d.layout),
+      blank: cleanBlank(d.blank),
       items: (d.items || []).map(cleanItem).filter(Boolean),
     }
   } catch {
@@ -174,6 +186,7 @@ export function handlePlaylist(req, res) {
       version: 1,
       updatedAt: Number(d.updatedAt) || Date.now(),
       layout: cleanLayout(d.layout),
+      blank: cleanBlank(d.blank),
       items: d.items.map(cleanItem).filter(Boolean),
     }
     writePlaylist(p)

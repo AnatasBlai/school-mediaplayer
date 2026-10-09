@@ -15,7 +15,7 @@ import {
   hasLayout,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
-import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText } from '../rules.js'
+import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText, isBlanked } from '../rules.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
 import NewsEditor from './NewsEditor.vue'
@@ -105,6 +105,20 @@ function clearWhen(it) {
 function setLayout(it, v) {
   if (v) it.layout = v
   else delete it.layout
+}
+
+// ---------- гашение экрана ----------
+const blankNow = computed(() => isBlanked(playlist.blank, now.value))
+function addBlank() {
+  playlist.blank.periods.push({ timeFrom: '19:00', timeTo: '07:00', days: [] })
+  playlist.blank.on = true
+}
+function toggleBlankDay(p, d) {
+  const i = p.days.indexOf(d)
+  if (i >= 0) p.days.splice(i, 1)
+  else p.days.push(d)
+  p.days.sort()
+  if (p.days.length === 7) p.days = []
 }
 
 function remove(i) {
@@ -234,6 +248,36 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         Для фото, видео, новостей и колод:
         {{ playlist.layout === 'panel' ? 'справа — день, часы, звонок и изменения в расписании' : 'слайд занимает весь экран' }}.
         У отдельного слайда шаблон можно поменять. Табло расписания всегда во весь экран.
+      </span>
+    </div>
+
+    <div class="blank-bar" :class="{ active: playlist.blank.on }">
+      <label class="switch" title="Гасить экран по расписанию">
+        <input v-model="playlist.blank.on" type="checkbox" />
+        <span></span>
+      </label>
+      <span class="lb-title">Гашение экрана</span>
+      <template v-if="playlist.blank.on">
+        <div v-for="(p, pi) in playlist.blank.periods" :key="pi" class="blank-period">
+          с <input v-model="p.timeFrom" type="time" />
+          до <input v-model="p.timeTo" type="time" />
+          <span class="grades">
+            <button v-for="(d, di) in DAY_SHORT" :key="d" :class="{ on: p.days.includes(di + 1) }" @click="toggleBlankDay(p, di + 1)">
+              {{ d }}
+            </button>
+          </span>
+          <button class="link" title="Убрать период" @click="playlist.blank.periods.splice(pi, 1)">✕</button>
+        </div>
+        <button class="link" @click="addBlank">＋ период</button>
+        <span class="hint" :class="{ bad: blankNow }">
+          {{ blankNow ? 'Сейчас экран погашен' : 'Сейчас экран работает' }} (по часам этого компьютера).
+          Дни не выбраны — каждый день; пустое время — весь день.
+        </span>
+      </template>
+      <span v-else class="hint">
+        В указанные часы экран становится чёрным и ничего не проигрывает — например, ночью и в выходные.
+        Монитор и компьютер при этом не выключаются.
+        <button class="link" @click="addBlank">Настроить</button>
       </span>
     </div>
 
@@ -538,6 +582,44 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .scheme.panel b {
   display: block;
+}
+.blank-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #22252b;
+}
+.blank-bar.active {
+  box-shadow: inset 0 0 0 1px #4a3a6a;
+}
+.blank-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #15171b;
+  color: #c9ccd3;
+  font-weight: 600;
+}
+.blank-period input[type='time'] {
+  border: 1px solid #3b404a;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #1d1f24;
+  color: #f2f2f2;
+  font: inherit;
+  color-scheme: dark;
+}
+.blank-bar .hint {
+  color: #8b909a;
+  font-weight: 600;
+}
+.blank-bar .hint.bad {
+  color: #c9a7ff;
 }
 .layout-bar .hint {
   color: #8b909a;

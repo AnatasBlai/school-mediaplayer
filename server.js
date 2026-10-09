@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { handleApi, MIME } from './api.js'
+import { startBackupScheduler } from './server/backup.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(ROOT, 'dist')
@@ -43,6 +44,9 @@ const server = http.createServer((req, res) => {
   }
   sendFile(res, file, false)
 })
+
+// резервные копии по расписанию — только на боевом сервере
+startBackupScheduler()
 
 server.listen(PORT, '0.0.0.0', () => {
   const lan = []

@@ -1,9 +1,12 @@
 <script setup>
 // Медиатека: загрузка фото и видео перетаскиванием, список файлов, названия, категории, удаление.
+// Фильтр «Не используются» — файлы, которых нет ни в плейлисте, ни в карточках колод (можно удалить разом).
+// Кнопка «Резервная копия» открывает BackupPanel.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onServerEvent } from '../store.js'
 import { playlist, usesOfMedia, makeSlide } from '../playlist.js'
 import { decks } from '../decks.js'
+import BackupPanel from './BackupPanel.vue'
 import {
   ACCEPT,
   prepareFile,
@@ -38,7 +41,18 @@ async function refresh() {
 }
 
 // ---------- фильтры ----------
-const filter = reactive({ type: 'all', category: '', q: '' })
+const filter = reactive({ type: 'all', category: '', q: '', unused: false })
+
+// где используется файл: слайды плейлиста (фото, видео, новости) и карточки колод
+const usedIds = computed(() => {
+  const set = new Set()
+  for (const it of playlist.items) if (it.media) set.add(it.media)
+  for (const d of decks.list) for (const c of d.cards) if (c.media) set.add(c.media)
+  return set
+})
+const inCards = (id) => decks.list.some((d) => d.cards.some((c) => c.media === id))
+const unusedItems = computed(() => items.value.filter((it) => !usedIds.value.has(it.id)))
+const unusedSize = computed(() => unusedItems.value.reduce((s, it) => s + it.size, 0))
 const categories = computed(() => {
   const set = new Set(DEFAULT_CATEGORIES)
   for (const it of items.value) if (it.category) set.add(it.category)
@@ -51,6 +65,7 @@ const shown = computed(() => {
     (it) =>
       (filter.type === 'all' || it.type === filter.type) &&
       (!filter.category || it.category === filter.category) &&
+      (!filter.unused || !usedIds.value.has(it.id)) &&
       (!q || it.name.toLowerCase().includes(q)),
   )
 })
@@ -158,6 +173,45 @@ async function remove(it) {
   }
 }
 
+/** Удалить все показанные неиспользуемые файлы. */
+async function removeUnused() {
+  const list = shown.value.filter((it) => !usedIds.value.has(it.id))
+  const size = list.reduce((s, it) => s + it.size, 0)
+  if (!list.length || !confirm(`Удалить ${list.length} неиспользуемых файлов (${fmtSize(size)})? Их нет ни в плейлисте, ни в колодах.\n\nФайлы будут удалены с сервера.`)) return
+  for (const it of list) {
+    try {
+      await deleteMedia(it.id)
+      items.value = items.value.filter((x) => x.id !== it.id)
+    } catch (e) {
+      errorMsg.value = e.message
+      break
+    }
+  }
+  if (!unusedItems.value.length) filter.unused = false
+}
+
+// ---------- резервная копия ----------
+const backupOpen = ref(false)
+const backup = ref(null) // кратко: { dir, lastAt, last } — для подписи на кнопке
+async function loadBackup() {
+  try {
+    backup.value = await (await fetch('/api/backup', { cache: 'no-store' })).json()
+  } catch {
+    /* ignore */
+  }
+}
+const backupText = computed(() => {
+  const b = backup.value
+  if (!b) return ''
+  if (!b.dir) return 'не настроена'
+  if (b.job) return 'идёт…'
+  if (b.last && !b.last.ok) return 'ошибка'
+  if (!b.lastAt) return 'ещё не было'
+  const days = Math.floor((Date.now() - b.lastAt) / 86400e3)
+  return days === 0 ? 'сегодня' : days === 1 ? 'вчера' : `${days} дн. назад`
+})
+const backupBad = computed(() => !!backup.value && (!backup.value.dir || (backup.value.last && !backup.value.last.ok)))
+
 // ---------- плейлист ----------
 function addToPlaylist(it) {
   playlist.items.push(makeSlide(it.type, it.id))
@@ -172,7 +226,8 @@ function onKey(e) {
 let off = []
 onMounted(() => {
   refresh()
-  off = [onServerEvent('media', refresh), onServerEvent('hello', refresh)]
+  loadBackup()
+  off = [onServerEvent('media', refresh), onServerEvent('hello', refresh), onServerEvent('backup', loadBackup)]
   window.addEventListener('keydown', onKey)
 })
 onBeforeUnmount(() => {
@@ -206,9 +261,12 @@ onBeforeUnmount(() => {
         <button :class="{ on: filter.type === 'video' }" @click="filter.type = 'video'">Видео</button>
       </div>
       <input v-model="filter.q" class="search" type="search" placeholder="Поиск по названию" />
+      <button class="btn backup-btn" :class="{ bad: backupBad }" title="Резервная копия данных и файлов" @click="backupOpen = true">
+        Резервная копия<span v-if="backupText" class="backup-state">: {{ backupText }}</span>
+      </button>
     </div>
 
-    <div v-if="usedCategories.length" class="chips">
+    <div v-if="usedCategories.length || unusedItems.length" class="chips">
       <button class="chip" :class="{ on: !filter.category }" @click="filter.category = ''">Все категории</button>
       <button
         v-for="c in usedCategories"
@@ -219,6 +277,17 @@ onBeforeUnmount(() => {
       >
         {{ c }}
       </button>
+      <span class="spacer"></span>
+      <button
+        v-if="unusedItems.length || filter.unused"
+        class="chip unused"
+        :class="{ on: filter.unused }"
+        title="Файлы, которых нет ни в плейлисте, ни в карточках колод"
+        @click="filter.unused = !filter.unused"
+      >
+        Не используются: {{ unusedItems.length }} · {{ fmtSize(unusedSize) }}
+      </button>
+      <button v-if="filter.unused && shown.length" class="chip danger" @click="removeUnused">Удалить показанные ({{ shown.length }})</button>
     </div>
 
     <datalist id="media-cats">
@@ -256,6 +325,7 @@ onBeforeUnmount(() => {
           <span v-else class="noimg">{{ it.type === 'video' ? '▶' : '' }}</span>
           <span v-if="it.type === 'video'" class="badge">▶ {{ fmtDuration(it.duration) }}</span>
           <span v-if="usesOfMedia(it.id)" class="in-pl">в плейлисте</span>
+          <span v-else-if="inCards(it.id)" class="in-pl">в колоде</span>
         </button>
         <div class="info">
           <input
@@ -291,6 +361,8 @@ onBeforeUnmount(() => {
       Файлов: {{ items.length }} · {{ fmtSize(totalSize) }}
       <template v-if="disk"> · свободно на диске {{ fmtSize(disk.free) }}</template>
     </footer>
+
+    <BackupPanel v-if="backupOpen" @close="backupOpen = false" />
 
     <!-- перетаскивание -->
     <div v-if="dragging" class="drop">Отпустите файлы, чтобы загрузить их</div>
@@ -408,6 +480,23 @@ input:focus {
   border-color: #3d7be0;
   background: rgba(61, 123, 224, 0.2);
   color: #fff;
+}
+.chip.unused.on {
+  border-color: #c98a2b;
+  background: rgba(201, 138, 43, 0.2);
+}
+.chip.danger {
+  border-color: #b8473a;
+  color: #ffb3a7;
+}
+.chip.danger:hover {
+  background: rgba(184, 71, 58, 0.25);
+}
+.backup-btn.bad .backup-state {
+  color: #ffb3a7;
+}
+.backup-state {
+  color: #a4a9b3;
 }
 
 .queue {
