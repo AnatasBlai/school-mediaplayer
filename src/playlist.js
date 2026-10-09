@@ -3,7 +3,7 @@
 import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
 
-export const playlist = reactive({ updatedAt: 0, items: [] })
+export const playlist = reactive({ updatedAt: 0, layout: 'full', items: [] })
 export const playlistLoaded = ref(false)
 export const mediaLoaded = ref(false)
 export const media = ref([]) // элементы медиатеки (data/media.json)
@@ -24,6 +24,11 @@ export function makeSlide(type, mediaId) {
   return { id: newId(), type: 'video', on: true, media: mediaId, fit: 'cover', sound: false }
 }
 
+// шаблон фото/видео: 'full' — весь экран, 'panel' — медиа слева, справа панель с часами, звонками и изменениями
+export const LAYOUT_TITLES = { full: 'Весь экран', panel: 'С панелью справа' }
+/** Шаблон, по которому слайд реально показывается: свой у слайда или общий. Табло всегда во весь экран. */
+export const layoutOf = (it) => (it.type === 'image' || it.type === 'video' ? it.layout || playlist.layout || 'full' : 'full')
+
 /** Название слайда для людей. */
 export function slideTitle(it) {
   if (it.type === 'schedule') {
@@ -40,11 +45,12 @@ export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id
 
 let applying = false
 let lastProbe = ''
-const probeOf = () => JSON.stringify(playlist.items)
+const probeOf = () => JSON.stringify([playlist.layout, playlist.items])
 
 function apply(d) {
   applying = true
   playlist.updatedAt = Number(d.updatedAt) || 0
+  playlist.layout = d.layout === 'panel' ? 'panel' : 'full'
   playlist.items = Array.isArray(d.items) ? d.items : []
   lastProbe = probeOf()
   playlistLoaded.value = true

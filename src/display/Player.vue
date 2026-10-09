@@ -6,10 +6,11 @@
 // Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
 // табло само плавно меняет вкладку и тему.
 // Правила показа (даты, время, дни) проверяются по часам этого компьютера.
+// Фото/видео идут по шаблону (layoutOf): на весь экран или с панелью справа — панель рисует сам MediaSlide.
 // О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { state, GRADES, hasChanges } from '../store.js'
-import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist } from '../playlist.js'
+import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist, layoutOf } from '../playlist.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
 import { ruleState } from '../rules.js'
@@ -169,6 +170,7 @@ onBeforeUnmount(() => {
         :item="s.item"
         :file="mediaById(s.item.media)"
         :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
         @done="onDone(s)"
       />
     </div>

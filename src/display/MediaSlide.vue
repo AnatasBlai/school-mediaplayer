@@ -1,13 +1,17 @@
 <script setup>
 // Слайд с фото или видео. Пока active=false — лежит невидимым и заранее грузится (следующий слайд).
 // Фото показывается item.duration секунд, видео — до конца. Потом 'done'.
+// Шаблон layout: 'full' — на весь экран; 'panel' — медиа слева, справа InfoPanel (часы, звонки, изменения),
+// под панелью — затемнённое превью этого же файла.
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { mediaUrl, thumbUrl } from '../playlist.js'
+import InfoPanel from './InfoPanel.vue'
 
 const props = defineProps({
   item: Object, // слайд плейлиста
   file: Object, // элемент медиатеки
   active: Boolean,
+  layout: { type: String, default: 'full' },
 })
 const emit = defineEmits(['done'])
 
@@ -69,15 +73,18 @@ onBeforeUnmount(() => clearTimeout(timer))
 </script>
 
 <template>
-  <div class="media" :class="item.fit">
-    <!-- при «вписать» поля заполняет размытое увеличенное превью (маленькая картинка, без filter: blur) -->
+  <div class="media" :class="[item.fit, layout]">
+    <!-- поля («целиком») и фон под панелью заполняет растянутое превью (маленькая картинка, без filter: blur) -->
     <div
-      v-if="item.fit === 'contain' && thumbUrl(file)"
+      v-if="(item.fit === 'contain' || layout === 'panel') && thumbUrl(file)"
       class="back"
       :style="{ backgroundImage: `url(&quot;${thumbUrl(file)}&quot;)` }"
     ></div>
-    <img v-if="file.type === 'image'" ref="img" :src="mediaUrl(file)" alt="" @error="fail" />
-    <video v-else ref="video" :src="mediaUrl(file)" preload="auto" playsinline muted @ended="finish" @error="fail"></video>
+    <div class="area">
+      <img v-if="file.type === 'image'" ref="img" :src="mediaUrl(file)" alt="" @error="fail" />
+      <video v-else ref="video" :src="mediaUrl(file)" preload="auto" playsinline muted @ended="finish" @error="fail"></video>
+    </div>
+    <InfoPanel v-if="layout === 'panel'" />
   </div>
 </template>
 
@@ -99,6 +106,19 @@ onBeforeUnmount(() => clearTimeout(timer))
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+}
+.panel .back::after {
+  background: rgba(0, 0, 0, 0.6);
+}
+.area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* ширина панели — как у InfoPanel: 440 из 1080 по высоте экрана */
+.panel .area {
+  right: calc(100vh * 440 / 1080);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
 }
 img,
 video {

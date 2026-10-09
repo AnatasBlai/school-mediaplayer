@@ -2,7 +2,17 @@
 // Плейлист (/admin#playlist): что и в каком порядке показывает экран. Правки сохраняются сами.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { state, GRADES } from '../store.js'
-import { playlist, playlistLoaded, media, mediaById, makeSlide, startPlaylist, slideTitle, SLIDE_TITLES } from '../playlist.js'
+import {
+  playlist,
+  playlistLoaded,
+  media,
+  mediaById,
+  makeSlide,
+  startPlaylist,
+  slideTitle,
+  SLIDE_TITLES,
+  LAYOUT_TITLES,
+} from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
 import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText } from '../rules.js'
 import { onScreenIds } from './screens.js'
@@ -77,6 +87,13 @@ function toggleDay(it, d) {
 }
 function clearWhen(it) {
   delete it.when
+}
+
+// ---------- шаблон фото/видео ----------
+// у слайда: '' — как общий шаблон (поля layout нет), 'full' / 'panel' — свой
+function setLayout(it, v) {
+  if (v) it.layout = v
+  else delete it.layout
 }
 
 function remove(i) {
@@ -164,6 +181,24 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
     <NowOnScreen />
 
+    <div class="layout-bar">
+      <span class="lb-title">Шаблон фото и видео:</span>
+      <button
+        v-for="(t, k) in LAYOUT_TITLES"
+        :key="k"
+        class="lb-opt"
+        :class="{ on: playlist.layout === k }"
+        @click="playlist.layout = k"
+      >
+        <span class="scheme" :class="k"><i></i><b></b></span>
+        {{ t }}
+      </button>
+      <span class="hint">
+        {{ playlist.layout === 'panel' ? 'справа — день, часы, звонок и изменения в расписании' : 'файл занимает весь экран' }}.
+        У отдельного слайда шаблон можно поменять. Табло расписания всегда во весь экран.
+      </span>
+    </div>
+
     <p class="help">
       Экран показывает включённые слайды сверху вниз и начинает сначала. Слайд с правилами («Когда») идёт только в
       указанные даты, часы и дни. Порядок меняется перетаскиванием за ⋮⋮ или стрелками. Изменения сразу уходят на экраны.
@@ -219,8 +254,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <input v-model="it.skipEmpty" type="checkbox" /> пропускать, если изменений нет
             </label>
             <span v-if="it.type === 'image' || it.type === 'video'" class="seg">
-              <button :class="{ on: it.fit !== 'contain' }" title="Растянуть на весь экран, края могут обрезаться" @click="it.fit = 'cover'">
-                На весь экран
+              <button :class="{ on: it.fit !== 'contain' }" title="Заполнить всё место, края могут обрезаться" @click="it.fit = 'cover'">
+                Заполнить
               </button>
               <button :class="{ on: it.fit === 'contain' }" title="Показать целиком, по краям — размытый фон" @click="it.fit = 'contain'">
                 Целиком
@@ -229,6 +264,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <label v-if="it.type === 'video'" class="check">
               <input v-model="it.sound" type="checkbox" /> со звуком
             </label>
+            <select
+              v-if="it.type === 'image' || it.type === 'video'"
+              class="layout-sel"
+              :class="{ own: it.layout }"
+              title="Шаблон экрана для этого слайда"
+              :value="it.layout || ''"
+              @change="setLayout(it, $event.target.value)"
+            >
+              <option value="">Шаблон: как у всех ({{ LAYOUT_TITLES[playlist.layout].toLowerCase() }})</option>
+              <option v-for="(t, k) in LAYOUT_TITLES" :key="k" :value="k">Шаблон: {{ t.toLowerCase() }}</option>
+            </select>
             <button
               class="when-btn"
               :class="{ set: hasRules(it.when), open: openRules[it.id] }"
@@ -371,6 +417,76 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .sum {
   color: #c9ccd3;
   font-weight: 700;
+}
+.layout-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #22252b;
+}
+.lb-title {
+  font-weight: 800;
+  color: #e6e8ec;
+}
+.lb-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 5px 12px 5px 6px;
+  background: #15171b;
+  color: #a4a9b3;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lb-opt:hover {
+  color: #fff;
+}
+.lb-opt.on {
+  border-color: #3d7be0;
+  background: #2a3550;
+  color: #fff;
+}
+/* схема шаблона: i — медиа, b — панель */
+.scheme {
+  display: inline-flex;
+  gap: 2px;
+  width: 40px;
+  height: 23px;
+  padding: 2px;
+  border-radius: 4px;
+  background: #0c0d10;
+}
+.scheme i {
+  flex: 1;
+  border-radius: 2px;
+  background: #6d8fc9;
+}
+.scheme b {
+  display: none;
+  flex: 0 0 9px;
+  border-radius: 2px;
+  background: #d9c08a;
+}
+.scheme.panel b {
+  display: block;
+}
+.layout-bar .hint {
+  color: #8b909a;
+  font-weight: 600;
+}
+.layout-sel {
+  padding: 4px 8px;
+  color: #a4a9b3;
+}
+.layout-sel.own {
+  border-color: #3d7be0;
+  color: #fff;
 }
 .help {
   margin: 0;

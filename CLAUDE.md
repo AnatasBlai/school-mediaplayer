@@ -58,7 +58,8 @@ server/
                   broadcast('playlist', { updatedAt }) после записи плейлиста; ping раз в 25 с
   playlist.js     GET/PUT /api/playlist → data/playlist.json; cleanItem() чистит каждый слайд; нет файла — плейлист
                   по умолчанию из старых settings.interval/changes* (на диск попадает при первом PUT);
-                  removeMediaFromPlaylist(id) — вызывается из media.js при DELETE файла. cleanWhen() — правила показа
+                  removeMediaFromPlaylist(id) — вызывается из media.js при DELETE файла. cleanWhen() — правила показа; cleanLayout() — общий
+                  шаблон layout ('full'|'panel'), у фото/видео layout сохраняется, только если задан
   screens.js      POST/GET /api/screens — что сейчас показывают экраны. Только в памяти (после перезапуска экраны
                   перезагружаются и сообщают о себе заново). broadcast('screens') — новый экран, смена слайда/вкладки,
                   экран закрыт ({ id, gone: true } через sendBeacon) или вернулся. Молчащий сутки — забывается
@@ -76,7 +77,8 @@ src/
   rules.js        правила показа: ruleState(when, now) → { ok, reason }, rulesText(when), hasRules, DAY_SHORT, EMPTY_WHEN.
                   Общий для экрана и редактора; чистые функции, проверять можно прямо в node
   playlist.js     стор плейлиста (как store.js: debounce 300 мс → PUT, SSE 'playlist'/'media'/'hello') + список медиатеки
-                  (media, mediaById), mediaUrl/thumbUrl, makeSlide(type, mediaId), slideTitle(it), usesOfMedia(id); startPlaylist() —
+                  (media, mediaById), mediaUrl/thumbUrl, makeSlide(type, mediaId), slideTitle(it), usesOfMedia(id),
+                  LAYOUT_TITLES, layoutOf(it) — шаблон слайда (свой → общий → 'full'; табло всегда 'full'); startPlaylist() —
                   один раз на страницу (зовут Player и AdminApp). Пишет в общий saveStatus из store.js
   display/
     Player.vue    движок показа: идёт по плейлисту по кругу. Слоты active / leaving (под новым ~1 с) / next (невидим,
@@ -88,13 +90,19 @@ src/
                   'screen-id', имя — из адреса /?name=Холл
     MediaSlide.vue  фото (duration с) / видео (до 'ended'; страховка duration+15 с). Ошибка файла → дальше через 2 с.
                   Звук: если браузер не дал play() со звуком — играет без звука. fit cover|contain; при contain
-                  поля — превью 480 px, растянутое на экран (без filter: blur)
+                  поля — превью 480 px, растянутое на экран (без filter: blur). Проп layout (из layoutOf):
+                  'full' — на весь экран; 'panel' — медиа в .area слева, справа InfoPanel, под ней затемнённое превью.
+                  Панель рисует каждый слайд сам (не общий слой) — кроссфейд одинаковых панелей незаметен
+    InfoPanel.vue   панель шаблона 'panel': холст 440×1080, масштаб по высоте блока (ширина calc(100vh*440/1080)),
+                  день, дата, часы (свой таймер 1 с), BellWidget, изменения из ch0..ch(changesCols-1)
+                  (до 7 строк, дальше «и ещё N»; нет изменений — блока нет). Свои --accent/--shadow-text
   admin/
     AdminApp.vue  редактор: тёмная панель сверху (разделы, статус сохранения/связи, «Открыть экран»), под ней раздел.
                   Разделы: schedule (ScheduleBoard editable), playlist, media. Текущий раздел — в hash (/admin#media)
     PlaylistEditor.vue  плейлист: строки слайдов (перетаскивание за ⋮⋮, ↑↓, вкл/выкл, длительность, ✕), настройки по типу
                   (параллели / пропускать пустые / на весь экран|целиком / со звуком), выбор файлов из медиатеки
                   (мультивыбор, порядок выбора = порядок добавления), итог «круг ≈» (только слайды, идущие сейчас).
+                  Полоса «Шаблон фото и видео» (playlist.layout) и у фото/видео select «Шаблон: как у всех / …».
                   Кнопка «Когда: …» раскрывает панель правил (даты, время, дни, «Пн–Пт», сброс). Метки
                   «▶ на экране» (по отчётам экранов) и «сейчас не идёт: причина» (по часам этого компьютера)
     NowOnScreen.vue  карточки экранов вверху раздела «Плейлист»: что идёт, сколько, на связи ли. Отключённый дубль
@@ -178,12 +186,15 @@ src/
 Рабочие данные. Пишется целиком через PUT /api/playlist (клиент), а при удалении файла — сервером.
 
 ```js
-{ version: 1, updatedAt: <ms>, items: [          // порядок показа = порядок в массиве
+{ version: 1, updatedAt: <ms>,
+  layout: 'full' | 'panel',                       // общий шаблон фото/видео; нет поля (старый файл) = 'full'
+  items: [                                        // порядок показа = порядок в массиве
   { id, type: 'schedule', on, duration /* с на параллель */, grades: ['5','6'] /* [] — все */ },
   { id, type: 'changes',  on, duration, skipEmpty },
   { id, type: 'image',    on, media /* id из media.json */, fit: 'cover'|'contain', duration },
   { id, type: 'video',    on, media, fit, sound },   // идёт до конца, duration нет
 ] }
+// у image/video может быть layout: 'full' | 'panel' — свой шаблон; нет поля = как общий playlist.layout
 // у любого слайда может быть when — правила показа (нет поля = всегда):
 when: { dateFrom: 'ГГГГ-ММ-ДД', dateTo, timeFrom: 'ЧЧ:ММ', timeTo, days: [1..7] }  // '' / [] — без ограничения
 ```
@@ -257,7 +268,9 @@ when: { dateFrom: 'ГГГГ-ММ-ДД', dateTo, timeFrom: 'ЧЧ:ММ', timeTo, d
        Данные — `data/playlist.json`. При удалении файла — предупреждение и слайды убираются сервером.
 4. [x] (v0.4.0) Правила показа (даты, время суток, дни недели) у каждого слайда + «Сейчас на экране» в разделе «Плейлист»
        (отчёты экранов POST /api/screens, имя экрана — /?name=…, метки на строках плейлиста).
-5. [ ] Шаблоны: полный экран / зоны.
+5. [x] (v0.5.0) Шаблоны: у фото/видео «весь экран» или «с панелью справа» (день, дата, часы, звонок, изменения).
+       Общий шаблон в плейлисте + свой у слайда. Табло расписания всегда во весь экран.
+       В кадрировании «На весь экран» переименовано в «Заполнить», чтобы не путать с шаблоном.
 6. [ ] Новости (текст + картинка). Образовательный контент — те же фото/видео, отдельный тип не нужен,
        максимум метка/категория в медиатеке.
 7. [ ] Обслуживание: бэкап data/ + media/, автозапуск сервера в Windows, очистка неиспользуемых файлов,

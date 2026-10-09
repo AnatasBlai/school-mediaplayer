@@ -1,5 +1,5 @@
 // Плейлист экрана: порядок слайдов, длительность, вкл/выкл — data/playlist.json.
-//   GET /api/playlist  → { version, updatedAt, items }; если файла нет — плейлист по умолчанию
+//   GET /api/playlist  → { version, updatedAt, layout, items }; если файла нет — плейлист по умолчанию
 //                        из старых настроек автолистания (schedule.json), на диск он попадает при первом PUT
 //   PUT /api/playlist  — весь плейлист целиком (как /api/data), сервер проверяет и чистит поля
 import fs from 'node:fs'
@@ -13,6 +13,9 @@ const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
 const TYPES = ['schedule', 'changes', 'image', 'video']
+// шаблон фото/видео: весь экран или медиа слева + панель справа (часы, звонки, изменения)
+const LAYOUTS = ['full', 'panel']
+const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
 const GRADES = ['5', '6', '7', '8', '9', '10', '11']
 
 /** Правила показа: период дат, время суток, дни недели (1 — Пн … 7 — Вс). Пусто — показывать всегда. */
@@ -54,6 +57,7 @@ function cleanItem(x) {
     it.fit = x.fit === 'contain' ? 'contain' : 'cover'
     if (x.type === 'image') it.duration = secs(x.duration, 10)
     else it.sound = !!x.sound // видео идёт до конца, длительность не нужна
+    if (LAYOUTS.includes(x.layout)) it.layout = x.layout // нет поля — как общий шаблон плейлиста
   }
   const when = cleanWhen(x.when)
   if (when) it.when = when
@@ -71,6 +75,7 @@ function defaultPlaylist() {
   return {
     version: 1,
     updatedAt: 0,
+    layout: 'full',
     items: [
       cleanItem({ id: 'schedule0', type: 'schedule', duration: s.interval }),
       cleanItem({
@@ -87,7 +92,12 @@ function defaultPlaylist() {
 export function readPlaylist() {
   try {
     const d = JSON.parse(fs.readFileSync(FILE, 'utf8'))
-    return { version: 1, updatedAt: Number(d.updatedAt) || 0, items: (d.items || []).map(cleanItem).filter(Boolean) }
+    return {
+      version: 1,
+      updatedAt: Number(d.updatedAt) || 0,
+      layout: cleanLayout(d.layout),
+      items: (d.items || []).map(cleanItem).filter(Boolean),
+    }
   } catch {
     return defaultPlaylist()
   }
@@ -106,7 +116,7 @@ export function removeMediaFromPlaylist(mediaId) {
   const p = readPlaylist()
   const items = p.items.filter((it) => it.media !== mediaId)
   const removed = p.items.length - items.length
-  if (removed) writePlaylist({ version: 1, updatedAt: Date.now(), items })
+  if (removed) writePlaylist({ ...p, updatedAt: Date.now(), items })
   return removed
 }
 
@@ -135,7 +145,12 @@ export function handlePlaylist(req, res) {
       return json(res, 400, { ok: false, error: 'Неверный JSON' })
     }
     if (!Array.isArray(d.items)) return json(res, 400, { ok: false, error: 'Нет списка слайдов' })
-    const p = { version: 1, updatedAt: Number(d.updatedAt) || Date.now(), items: d.items.map(cleanItem).filter(Boolean) }
+    const p = {
+      version: 1,
+      updatedAt: Number(d.updatedAt) || Date.now(),
+      layout: cleanLayout(d.layout),
+      items: d.items.map(cleanItem).filter(Boolean),
+    }
     writePlaylist(p)
     json(res, 200, { ok: true, updatedAt: p.updatedAt })
   })
