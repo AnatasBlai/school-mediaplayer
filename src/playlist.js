@@ -2,6 +2,7 @@
 // обновление по SSE. Общий для экрана (движок показа) и редактора (раздел «Плейлист»).
 import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
+import { deckById } from './decks.js'
 
 export const playlist = reactive({ updatedAt: 0, layout: 'full', items: [] })
 export const playlistLoaded = ref(false)
@@ -13,11 +14,23 @@ export const thumbUrl = (item) => (item.thumb ? '/media/' + item.thumb : item.ty
 
 // ---------- слайды ----------
 
-export const SLIDE_TITLES = { schedule: 'Расписание', changes: 'Изменения', image: 'Фото', video: 'Видео' }
+export const SLIDE_TITLES = {
+  schedule: 'Расписание',
+  changes: 'Изменения',
+  image: 'Фото',
+  video: 'Видео',
+  news: 'Новость',
+  deck: 'Колода',
+}
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
+/** Новый слайд. Для 'image'/'video' второй аргумент — id файла, для 'deck' — id колоды. */
 export function makeSlide(type, mediaId) {
+  if (type === 'news') {
+    return { id: newId(), type, on: true, label: 'Новости', title: '', text: '', date: '', fit: 'cover', theme: '6', duration: 15 }
+  }
+  if (type === 'deck') return { id: newId(), type, on: true, deck: mediaId, mode: 'next' }
   if (type === 'schedule') return { id: newId(), type, on: true, duration: 15, grades: [] }
   if (type === 'changes') return { id: newId(), type, on: true, duration: 20, skipEmpty: true }
   if (type === 'image') return { id: newId(), type, on: true, media: mediaId, fit: 'cover', duration: 10 }
@@ -35,6 +48,8 @@ export function slideTitle(it) {
     return it.grades?.length ? 'Расписание: ' + it.grades.join(', ') + ' кл.' : 'Расписание: все параллели'
   }
   if (it.type === 'changes') return 'Изменения в расписании'
+  if (it.type === 'news') return it.title || it.text?.slice(0, 60) || 'Новость без заголовка'
+  if (it.type === 'deck') return deckById(it.deck)?.name || 'Колода удалена'
   return mediaById(it.media)?.name || 'Файл удалён'
 }
 

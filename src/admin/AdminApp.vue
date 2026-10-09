@@ -5,15 +5,20 @@ import { saveStatus, connected } from '../store.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaLibrary from './MediaLibrary.vue'
 import PlaylistEditor from './PlaylistEditor.vue'
+import DeckEditor from './DeckEditor.vue'
 import { startPlaylist } from '../playlist.js'
+import { startDecks } from '../decks.js'
+import './ui.css'
 
 // плейлист нужен и разделу «Плейлист», и медиатеке (предупреждение при удалении файла)
 startPlaylist()
+startDecks()
 
 // разделы редактора; текущий хранится в адресе (/admin#media), чтобы переживать обновление страницы
 const SECTIONS = [
   { id: 'schedule', title: 'Расписание' },
   { id: 'playlist', title: 'Плейлист' },
+  { id: 'decks', title: 'Колоды' },
   { id: 'media', title: 'Медиатека' },
 ]
 const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'schedule')
@@ -66,6 +71,7 @@ const status = computed(() => {
         <ScheduleBoard editable />
       </div>
       <PlaylistEditor v-else-if="section === 'playlist'" />
+      <DeckEditor v-else-if="section === 'decks'" />
       <MediaLibrary v-else-if="section === 'media'" />
     </main>
   </div>

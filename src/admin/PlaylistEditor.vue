@@ -17,8 +17,11 @@ import { thumbUrl, fmtDuration } from './mediaApi.js'
 import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText } from '../rules.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
+import NewsEditor from './NewsEditor.vue'
+import { decks, deckById, cardSeconds, startDecks } from '../decks.js'
 
 startPlaylist()
+startDecks()
 
 // время для проверки правил — по часам этого компьютера, раз в 15 с
 const now = ref(new Date())
@@ -39,7 +42,14 @@ function secondsOf(it) {
     return gs.length * it.duration
   }
   if (it.type === 'video') return Math.round(fileOf(it)?.duration || 0)
+  if (it.type === 'deck') return deckSeconds(it)
   return it.duration
+}
+/** Сколько в среднем идёт одна карточка колоды. */
+function deckSeconds(it) {
+  const d = deckById(it.deck)
+  if (!d?.cards.length) return 0
+  return Math.round(d.cards.reduce((s, c) => s + cardSeconds(d, c), 0) / d.cards.length)
 }
 const ruleOk = (it) => ruleState(it.when, now.value).ok
 // в круг сейчас входят включённые слайды, у которых правила подходят под текущий момент
@@ -133,6 +143,27 @@ function addBoard(type) {
   playlist.items.push(makeSlide(type))
 }
 
+// новость правится в отдельном окне; пустую новость при закрытии убираем
+const newsEdit = ref(null)
+function addNews() {
+  playlist.items.push(makeSlide('news'))
+  newsEdit.value = playlist.items[playlist.items.length - 1]
+}
+function closeNews() {
+  const it = newsEdit.value
+  newsEdit.value = null
+  if (it && !it.title && !it.text && !it.media) {
+    const i = playlist.items.indexOf(it)
+    if (i >= 0) playlist.items.splice(i, 1)
+  }
+}
+
+function addDeck(e) {
+  const id = e.target.value
+  e.target.value = ''
+  if (id) playlist.items.push(makeSlide('deck', id))
+}
+
 const picker = reactive({ open: false, type: 'all', category: '', selected: [] })
 const pickerItems = computed(() =>
   [...media.value]
@@ -173,6 +204,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <button class="btn primary" @click="openPicker">＋ Фото или видео</button>
       <button class="btn" @click="addBoard('schedule')">＋ Расписание</button>
       <button class="btn" @click="addBoard('changes')">＋ Изменения</button>
+      <button class="btn" @click="addNews">＋ Новость</button>
+      <select class="btn add-deck" title="Колода: факты, вопросы, загадки — каждый показ новая карточка" @change="addDeck">
+        <option value="">＋ Колода…</option>
+        <option v-for="d in decks.list" :key="d.id" :value="d.id">{{ d.name }} ({{ d.cards.length }})</option>
+      </select>
       <div class="spacer"></div>
       <div class="sum">
         Включено: {{ enabledCount }} из {{ items.length }} · сейчас по правилам идут {{ nowCount }} · круг ≈ {{ fmtTotal(total) }}
@@ -231,6 +267,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <img v-if="fileOf(it) && thumbUrl(fileOf(it))" :src="thumbUrl(fileOf(it))" alt="" />
           <span v-else-if="it.type === 'schedule'">5–11</span>
           <span v-else-if="it.type === 'changes'">Изм.</span>
+          <span v-else-if="it.type === 'news'">Новость</span>
+          <span v-else-if="it.type === 'deck'">?!</span>
           <span v-else-if="!fileOf(it)">?</span>
           <span v-if="it.type === 'video'" class="badge">▶</span>
         </div>
@@ -249,6 +287,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <span class="grades">
                 <button v-for="g in GRADES" :key="g" :class="{ on: gradeOn(it, g) }" @click="toggleGrade(it, g)">{{ g }}</button>
               </span>
+            </template>
+            <template v-if="it.type === 'news'">
+              <button class="edit-btn" @click="newsEdit = it">✎ Изменить</button>
+              <span class="news-text">{{ it.text }}</span>
+            </template>
+            <template v-if="it.type === 'deck'">
+              <select v-model="it.deck" class="layout-sel" title="Какая колода">
+                <option v-if="!deckById(it.deck)" :value="it.deck">— колода удалена —</option>
+                <option v-for="d in decks.list" :key="d.id" :value="d.id">{{ d.name }} ({{ d.cards.length }})</option>
+              </select>
+              <span class="seg">
+                <button :class="{ on: it.mode !== 'daily' }" title="Каждый показ — следующая карточка" @click="it.mode = 'next'">По очереди</button>
+                <button :class="{ on: it.mode === 'daily' }" title="Весь день одна карточка, завтра — следующая" @click="it.mode = 'daily'">
+                  Одна в день
+                </button>
+              </span>
+              <a class="deck-link" href="#decks">карточки →</a>
             </template>
             <label v-if="it.type === 'changes'" class="check">
               <input v-model="it.skipEmpty" type="checkbox" /> пропускать, если изменений нет
@@ -290,6 +345,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <template v-if="it.type === 'video'">
             <span class="dur-video">до конца</span>
             <span class="dur-note">{{ fmtDuration(fileOf(it)?.duration) }}</span>
+          </template>
+          <template v-else-if="it.type === 'deck'">
+            <span class="dur-video">≈ {{ deckSeconds(it) }} с</span>
+            <span class="dur-note">карточка</span>
           </template>
           <template v-else>
             <input
@@ -349,6 +408,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
       </li>
     </ol>
+
+    <NewsEditor v-if="newsEdit" :item="newsEdit" @close="closeNews" />
 
     <!-- выбор файлов из медиатеки -->
     <div v-if="picker.open" class="modal-back" @mousedown.self="picker.open = false">
@@ -479,6 +540,45 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .layout-bar .hint {
   color: #8b909a;
   font-weight: 600;
+}
+.add-deck {
+  appearance: none;
+  padding-right: 16px;
+}
+.edit-btn {
+  border: 1px solid #3d7be0;
+  border-radius: 8px;
+  padding: 4px 12px;
+  background: #2a3550;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.news-text {
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+  color: #8b909a;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deck-link {
+  color: #8db4ff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.thumb.news,
+.thumb.deck {
+  background: linear-gradient(135deg, #2c74c0, #0c2c68);
+  color: #fff;
+  font-weight: 900;
+}
+.thumb.deck {
+  background: linear-gradient(135deg, #7a2fd0, #12052e);
+  font-size: 22px;
 }
 .layout-sel {
   padding: 4px 8px;

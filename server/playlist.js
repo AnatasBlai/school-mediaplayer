@@ -12,7 +12,8 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
-const TYPES = ['schedule', 'changes', 'image', 'video']
+const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'deck']
+const THEMES = ['5', '6', '7', '8', '9', '10', '11', 'changes']
 // шаблон фото/видео: весь экран или медиа слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
@@ -36,6 +37,7 @@ function cleanWhen(w) {
 
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
 const secs = (v, def) => Math.min(3600, Math.max(3, Math.round(Number(v)) || def))
+const str = (v, max) => String(v ?? '').trim().slice(0, max)
 
 /** Приводит слайд к допустимому виду; null — выбросить. */
 function cleanItem(x) {
@@ -51,6 +53,21 @@ function cleanItem(x) {
   } else if (x.type === 'changes') {
     it.duration = secs(x.duration, 20)
     it.skipEmpty = x.skipEmpty !== false
+  } else if (x.type === 'news') {
+    // новость: всё содержимое в самом слайде; фото необязательно
+    it.label = str(x.label, 40)
+    it.title = str(x.title, 140)
+    it.text = str(x.text, 800)
+    it.date = str(x.date, 40)
+    if (/^[a-z0-9]+$/.test(x.media || '')) it.media = x.media
+    it.fit = x.fit === 'contain' ? 'contain' : 'cover'
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.duration = secs(x.duration, 15)
+  } else if (x.type === 'deck') {
+    // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
+    if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null
+    it.deck = x.deck
+    it.mode = x.mode === 'daily' ? 'daily' : 'next'
   } else {
     if (!/^[a-z0-9]+$/.test(x.media || '')) return null
     it.media = x.media
@@ -111,12 +128,19 @@ function writePlaylist(p) {
   broadcast('playlist', { updatedAt: p.updatedAt })
 }
 
-/** Убирает из плейлиста слайды с удалённым файлом. Возвращает, сколько слайдов убрано. */
+/** Убирает из плейлиста слайды с удалённым файлом (у новости — только фото). Возвращает, сколько слайдов убрано. */
 export function removeMediaFromPlaylist(mediaId) {
   const p = readPlaylist()
-  const items = p.items.filter((it) => it.media !== mediaId)
+  let touched = false
+  const items = p.items.filter((it) => {
+    if (it.media !== mediaId) return true
+    touched = true
+    if (it.type !== 'news') return false
+    delete it.media
+    return true
+  })
   const removed = p.items.length - items.length
-  if (removed) writePlaylist({ ...p, updatedAt: Date.now(), items })
+  if (touched) writePlaylist({ ...p, updatedAt: Date.now(), items })
   return removed
 }
 

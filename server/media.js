@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { MIME } from './mime.js'
 import { broadcast } from './events.js'
 import { removeMediaFromPlaylist } from './playlist.js'
+import { removeMediaFromDecks } from './decks.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const MEDIA_DIR = path.join(ROOT, 'media')
@@ -198,6 +199,7 @@ function remove(res, id) {
   fs.rmSync(path.join(THUMBS_DIR, id + '.jpg'), { force: true })
   writeList(items)
   const removedFromPlaylist = removeMediaFromPlaylist(id)
+  removeMediaFromDecks(id)
   json(res, 200, { ok: true, removedFromPlaylist })
   broadcast('media')
 }

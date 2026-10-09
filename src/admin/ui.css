@@ -1,0 +1,142 @@
+/* Общие элементы тёмного редактора для новых компонентов (префикс a-, чтобы не пересекаться со scoped-стилями).
+   Подключается в AdminApp.vue — попадает только в чанк редактора. */
+.a-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #3b404a;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.a-btn:hover:not(:disabled) {
+  background: #4a505c;
+}
+.a-btn.primary {
+  background: #3d7be0;
+}
+.a-btn.primary:hover:not(:disabled) {
+  background: #4c89ec;
+}
+.a-btn.danger:hover:not(:disabled) {
+  background: #b8473a;
+}
+.a-btn.small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.a-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.a-input,
+.a-textarea,
+.a-select {
+  border: 1px solid #3b404a;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #15171b;
+  color: #f2f2f2;
+  font: inherit;
+  font-weight: 600;
+  min-width: 0;
+}
+.a-input:focus,
+.a-textarea:focus,
+.a-select:focus {
+  outline: none;
+  border-color: #3d7be0;
+}
+.a-textarea {
+  resize: vertical;
+  line-height: 1.4;
+}
+.a-num {
+  width: 70px;
+}
+
+.a-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 9px;
+  background: #15171b;
+}
+.a-seg button {
+  border: none;
+  border-radius: 7px;
+  padding: 4px 10px;
+  background: transparent;
+  color: #a4a9b3;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.a-seg button.on {
+  background: #3b404a;
+  color: #fff;
+}
+
+.a-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #a4a9b3;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.a-hint {
+  color: #8b909a;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* цвет темы: кружок с фоном темы */
+.a-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.a-swatch {
+  width: 34px;
+  height: 34px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+.a-swatch.on {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #3d7be0;
+}
+
+.a-modal-back {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.7);
+}
+.a-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 96vw;
+  max-height: 94vh;
+  padding: 20px;
+  border-radius: 14px;
+  background: #1d1f24;
+  border: 1px solid #353943;
+  color: #f2f2f2;
+  font-size: 14px;
+}
+.a-modal h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}

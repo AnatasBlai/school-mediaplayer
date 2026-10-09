@@ -42,7 +42,7 @@ function view(s) {
     title,
     tab,
     thumb: file ? thumbUrl(file) : '',
-    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : '',
+    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'news' && !file ? 'Нов.' : '',
     cls: sl.type,
     num: item ? playlist.items.indexOf(item) + 1 : 0,
   }
@@ -126,6 +126,12 @@ function view(s) {
 }
 .thumb.changes {
   background: linear-gradient(135deg, #6b4a2b, #3f7a3a);
+}
+.thumb.news {
+  background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.thumb.deck {
+  background: linear-gradient(135deg, #7a2fd0, #12052e);
 }
 .thumb img {
   width: 100%;

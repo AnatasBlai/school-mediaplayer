@@ -13,11 +13,16 @@ import { state, GRADES, hasChanges } from '../store.js'
 import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist, layoutOf } from '../playlist.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
+import NewsSlide from './NewsSlide.vue'
+import DeckSlide from './DeckSlide.vue'
 import { ruleState } from '../rules.js'
+import { decksLoaded, deckById, startDecks } from '../decks.js'
 
 startPlaylist()
+startDecks()
 
 const isBoard = (it) => it.type === 'schedule' || it.type === 'changes'
+const isMedia = (it) => it.type === 'image' || it.type === 'video'
 
 function boardTabs(it) {
   if (it.type === 'changes') return ['changes']
@@ -32,6 +37,8 @@ function playable(it) {
   if (!it.on || !ruleState(it.when, now.value).ok) return false
   if (it.type === 'schedule') return boardTabs(it).length > 0
   if (it.type === 'changes') return !it.skipEmpty || hasChanges()
+  if (it.type === 'news') return !!(it.title || it.text)
+  if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
 
@@ -94,12 +101,12 @@ function onDone(s) {
 
 // файл показываемого слайда удалили из медиатеки — сразу дальше
 watch(
-  () => cur.value && !isBoard(cur.value.item) && mediaLoaded.value && !mediaById(cur.value.item.media),
+  () => cur.value && isMedia(cur.value.item) && mediaLoaded.value && !mediaById(cur.value.item.media),
   (gone) => gone && advance(),
 )
 
-// старт: ждём плейлист и медиатеку (иначе фото в начале плейлиста пропустятся), но не дольше 5 с
-const ready = computed(() => playlistLoaded.value && mediaLoaded.value)
+// старт: ждём плейлист, медиатеку и колоды (иначе слайды в начале плейлиста пропустятся), но не дольше 5 с
+const ready = computed(() => playlistLoaded.value && mediaLoaded.value && decksLoaded.value)
 const startTimer = setTimeout(() => !cur.value && advance(), 5000)
 watch(ready, (r) => r && !cur.value && advance(), { immediate: true })
 
@@ -165,6 +172,8 @@ onBeforeUnmount(() => {
         @done="onDone(s)"
         @tab="(t) => (boardTab = t)"
       />
+      <NewsSlide v-else-if="s.item.type === 'news'" :item="s.item" :active="s.role === 'active'" @done="onDone(s)" />
+      <DeckSlide v-else-if="s.item.type === 'deck'" :item="s.item" :active="s.role === 'active'" @done="onDone(s)" />
       <MediaSlide
         v-else-if="mediaById(s.item.media)"
         :item="s.item"

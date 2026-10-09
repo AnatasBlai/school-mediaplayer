@@ -3,6 +3,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onServerEvent } from '../store.js'
 import { playlist, usesOfMedia, makeSlide } from '../playlist.js'
+import { decks } from '../decks.js'
 import {
   ACCEPT,
   prepareFile,
@@ -141,9 +142,12 @@ async function save(it, field, value) {
 
 async function remove(it) {
   const uses = usesOfMedia(it.id)
-  const warn = uses ? `
+  const inCards = decks.list.reduce((n, d) => n + d.cards.filter((c) => c.media === it.id).length, 0)
+  const where = [uses && `в плейлисте (слайдов: ${uses})`, inCards && `в карточках колод (${inCards})`].filter(Boolean)
+  // слайд с фото/видео убирается целиком, у новости и карточки пропадает только картинка
+  const warn = where.length ? `
 
-Файл стоит в плейлисте (слайдов: ${uses}) — он будет убран и оттуда.` : ''
+Файл используется ${where.join(' и ')} — он будет убран и оттуда.` : ''
   if (!confirm(`Удалить «${it.name}»? Файл будет удалён с сервера.${warn}`)) return
   try {
     await deleteMedia(it.id)

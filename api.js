@@ -3,6 +3,7 @@
 //   /api/events  — SSE-уведомления (server/events.js)
 //   /api/playlist — плейлист экрана (server/playlist.js)
 //   /api/screens — что сейчас показывают экраны (server/screens.js)
+//   /api/decks*  — колоды карточек: факты, вопросы, загадки (server/decks.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -11,6 +12,7 @@ import { openEvents, broadcast } from './server/events.js'
 import { handleMediaApi, handleMediaFiles } from './server/media.js'
 import { handlePlaylist } from './server/playlist.js'
 import { handleScreens } from './server/screens.js'
+import { handleDecks } from './server/decks.js'
 
 export { MIME } from './server/mime.js'
 
@@ -92,7 +94,7 @@ export function handleApi(req, res) {
     handleScreens(req, res)
     return true
   }
-  return handleMediaApi(req, res) || handleMediaFiles(req, res)
+  return handleDecks(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
 }
 
 export function apiPlugin() {
