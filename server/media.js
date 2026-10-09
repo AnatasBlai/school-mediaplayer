@@ -3,7 +3,7 @@
 //   POST   /api/media?name=&w=&h=&duration=   тело — сам файл (поток, без multipart) → запись
 //   PUT    /api/media/<id>/thumb      тело — превью jpeg → media/thumbs/<id>.jpg
 //   PATCH  /api/media/<id>            { name?, category? }
-//   DELETE /api/media/<id>
+//   DELETE /api/media/<id>            → { ok, removedFromPlaylist } — слайды с этим файлом убираются из плейлиста
 //   GET    /media/<файл>              раздача с Range (перемотка видео)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -13,6 +13,7 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { MIME } from './mime.js'
 import { broadcast } from './events.js'
+import { removeMediaFromPlaylist } from './playlist.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const MEDIA_DIR = path.join(ROOT, 'media')
@@ -196,7 +197,8 @@ function remove(res, id) {
   fs.rmSync(path.join(MEDIA_DIR, item.file), { force: true })
   fs.rmSync(path.join(THUMBS_DIR, id + '.jpg'), { force: true })
   writeList(items)
-  json(res, 200, { ok: true })
+  const removedFromPlaylist = removeMediaFromPlaylist(id)
+  json(res, 200, { ok: true, removedFromPlaylist })
   broadcast('media')
 }
 

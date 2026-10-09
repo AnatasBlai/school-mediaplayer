@@ -1,0 +1,151 @@
+<script setup>
+// Движок показа: идёт по плейлисту по кругу. Одновременно на странице не больше трёх слайдов:
+//   active  — показывается сейчас;
+//   leaving — предыдущий, лежит под active, пока тот проявляется (~1 с);
+//   next    — следующий, невидимый: фото/видео заранее грузятся, табло уже отрисовано.
+// Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
+// табло само плавно меняет вкладку и тему.
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { state, GRADES, hasChanges } from '../store.js'
+import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist } from '../playlist.js'
+import ScheduleBoard from '../components/ScheduleBoard.vue'
+import MediaSlide from './MediaSlide.vue'
+
+startPlaylist()
+
+const isBoard = (it) => it.type === 'schedule' || it.type === 'changes'
+
+function boardTabs(it) {
+  if (it.type === 'changes') return ['changes']
+  const gs = it.grades?.length ? it.grades : GRADES
+  return gs.filter((g) => (state.settings.letters[g] || []).length)
+}
+
+function playable(it) {
+  if (!it.on) return false
+  if (it.type === 'schedule') return boardTabs(it).length > 0
+  if (it.type === 'changes') return !it.skipEmpty || hasChanges()
+  return mediaById(it.media)?.type === it.type
+}
+
+// плейлист пуст или всё выключено — экран не должен быть чёрным, показываем расписание
+const FALLBACK = { id: 'fallback', type: 'schedule', on: true, duration: 15, grades: [] }
+
+/** Следующий слайд после слайда с данным id, по кругу. Если id нет в плейлисте — с начала. */
+function following(id) {
+  const items = playlist.items
+  const n = items.length
+  const start = items.findIndex((x) => x.id === id)
+  for (let k = 1; k <= n; k++) {
+    const it = items[(start + k + n) % n]
+    if (playable(it)) return it
+  }
+  return FALLBACK
+}
+
+// seq — порядковый номер показа; у фото/видео он входит в ключ, чтобы один и тот же файл
+// подряд (плейлист из одного видео) получал новый элемент и заранее грузился заново
+const keyOf = (item, seq) => (isBoard(item) ? 'board' : item.id + '#' + seq)
+const slot = (item, seq) => ({ item, seq, key: keyOf(item, seq) })
+
+const cur = ref(null)
+const leaving = ref(null)
+const next = computed(() => cur.value && slot(following(cur.value.item.id), cur.value.seq + 1))
+
+const slots = computed(() => {
+  const list = []
+  const seen = new Set()
+  for (const [s, role] of [
+    [cur.value, 'active'],
+    [leaving.value, 'leaving'],
+    [next.value, 'next'],
+  ]) {
+    if (s && !seen.has(s.key)) {
+      seen.add(s.key)
+      list.push({ ...s, role })
+    }
+  }
+  // постоянный порядок в DOM, чтобы Vue не переставлял элементы (видео при этом может остановиться)
+  return list.sort((a, b) => a.seq - b.seq)
+})
+
+let leaveTimer = null
+function advance() {
+  const old = cur.value
+  const n = old ? next.value : slot(following(null), 1)
+  cur.value = n
+  if (old && old.key !== n.key) {
+    leaving.value = old
+    clearTimeout(leaveTimer)
+    leaveTimer = setTimeout(() => (leaving.value = null), 1000)
+  }
+}
+
+function onDone(s) {
+  if (cur.value && s.key === cur.value.key && s.seq === cur.value.seq) advance()
+}
+
+// файл показываемого слайда удалили из медиатеки — сразу дальше
+watch(
+  () => cur.value && !isBoard(cur.value.item) && mediaLoaded.value && !mediaById(cur.value.item.media),
+  (gone) => gone && advance(),
+)
+
+// старт: ждём плейлист и медиатеку (иначе фото в начале плейлиста пропустятся), но не дольше 5 с
+const ready = computed(() => playlistLoaded.value && mediaLoaded.value)
+const startTimer = setTimeout(() => !cur.value && advance(), 5000)
+watch(ready, (r) => r && !cur.value && advance(), { immediate: true })
+onBeforeUnmount(() => {
+  clearTimeout(startTimer)
+  clearTimeout(leaveTimer)
+})
+</script>
+
+<template>
+  <div class="player">
+    <div v-for="s in slots" :key="s.key" class="slide" :class="s.role">
+      <ScheduleBoard
+        v-if="isBoard(s.item)"
+        :tabs="boardTabs(s.item)"
+        :seconds="s.item.duration"
+        :run="s.seq"
+        :playing="s.role === 'active'"
+        @done="onDone(s)"
+      />
+      <MediaSlide
+        v-else-if="mediaById(s.item.media)"
+        :item="s.item"
+        :file="mediaById(s.item.media)"
+        :active="s.role === 'active'"
+        @done="onDone(s)"
+      />
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.player {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  cursor: none;
+}
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease;
+}
+.slide.active {
+  z-index: 2;
+  opacity: 1;
+  visibility: visible;
+}
+.slide.leaving {
+  z-index: 1;
+  opacity: 1;
+  visibility: visible;
+}
+</style>

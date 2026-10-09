@@ -2,6 +2,7 @@
 // Медиатека: загрузка фото и видео перетаскиванием, список файлов, названия, категории, удаление.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onServerEvent } from '../store.js'
+import { playlist, usesOfMedia, makeSlide } from '../playlist.js'
 import {
   ACCEPT,
   prepareFile,
@@ -139,7 +140,11 @@ async function save(it, field, value) {
 }
 
 async function remove(it) {
-  if (!confirm(`Удалить «${it.name}»? Файл будет удалён с сервера.`)) return
+  const uses = usesOfMedia(it.id)
+  const warn = uses ? `
+
+Файл стоит в плейлисте (слайдов: ${uses}) — он будет убран и оттуда.` : ''
+  if (!confirm(`Удалить «${it.name}»? Файл будет удалён с сервера.${warn}`)) return
   try {
     await deleteMedia(it.id)
     items.value = items.value.filter((x) => x.id !== it.id)
@@ -147,6 +152,11 @@ async function remove(it) {
   } catch (e) {
     errorMsg.value = e.message
   }
+}
+
+// ---------- плейлист ----------
+function addToPlaylist(it) {
+  playlist.items.push(makeSlide(it.type, it.id))
 }
 
 // ---------- просмотр ----------
@@ -241,6 +251,7 @@ onBeforeUnmount(() => {
           <img v-if="thumbUrl(it)" :src="thumbUrl(it)" alt="" loading="lazy" />
           <span v-else class="noimg">{{ it.type === 'video' ? '▶' : '' }}</span>
           <span v-if="it.type === 'video'" class="badge">▶ {{ fmtDuration(it.duration) }}</span>
+          <span v-if="usesOfMedia(it.id)" class="in-pl">в плейлисте</span>
         </button>
         <div class="info">
           <input
@@ -263,6 +274,9 @@ onBeforeUnmount(() => {
           <div class="meta">
             <span>{{ it.w && it.h ? `${it.w}×${it.h}` : '' }}</span>
             <span>{{ fmtSize(it.size) }}</span>
+          </div>
+          <div class="card-acts">
+            <button class="add" title="Добавить в конец плейлиста" @click="addToPlaylist(it)">＋ В плейлист</button>
             <button class="del" title="Удалить" @click="remove(it)">Удалить</button>
           </div>
         </div>
@@ -558,8 +572,32 @@ input:focus {
   font-size: 12px;
   font-weight: 600;
 }
+.in-pl {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(63, 174, 90, 0.85);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.card-acts {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.add {
+  border: none;
+  background: none;
+  color: #7fb0ff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
 .del {
-  margin-left: auto;
   border: none;
   background: none;
   color: #ff8a7a;

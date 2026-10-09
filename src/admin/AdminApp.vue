@@ -4,10 +4,16 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { saveStatus, connected } from '../store.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaLibrary from './MediaLibrary.vue'
+import PlaylistEditor from './PlaylistEditor.vue'
+import { startPlaylist } from '../playlist.js'
+
+// плейлист нужен и разделу «Плейлист», и медиатеке (предупреждение при удалении файла)
+startPlaylist()
 
 // разделы редактора; текущий хранится в адресе (/admin#media), чтобы переживать обновление страницы
 const SECTIONS = [
   { id: 'schedule', title: 'Расписание' },
+  { id: 'playlist', title: 'Плейлист' },
   { id: 'media', title: 'Медиатека' },
 ]
 const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'schedule')
@@ -59,6 +65,7 @@ const status = computed(() => {
       <div v-if="section === 'schedule'" class="board">
         <ScheduleBoard editable />
       </div>
+      <PlaylistEditor v-else-if="section === 'playlist'" />
       <MediaLibrary v-else-if="section === 'media'" />
     </main>
   </div>

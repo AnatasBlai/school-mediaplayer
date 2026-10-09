@@ -1,18 +1,9 @@
 <script setup>
 // Экран для зрителей (/): браузер на весь экран на втором мониторе. Только показ, без редактирования.
-import ScheduleBoard from './components/ScheduleBoard.vue'
+// Что и в каком порядке показывать, задаёт плейлист (раздел «Плейлист» в /admin).
+import Player from './display/Player.vue'
 </script>
 
 <template>
-  <div class="display">
-    <ScheduleBoard />
-  </div>
+  <Player />
 </template>
-
-<style scoped>
-.display {
-  position: fixed;
-  inset: 0;
-  cursor: none;
-}
-</style>

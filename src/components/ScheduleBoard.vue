@@ -1,5 +1,15 @@
+<script>
+import { ref as moduleRef } from 'vue'
+const bgProbe = moduleRef('')
+const probe = new Image()
+probe.onload = () => (bgProbe.value = `url("${probe.src}")`)
+probe.src = '/background.jpg'
+</script>
+
 <script setup>
-// Табло расписания 1920×1080. На экране (/) только показывает, в редакторе (/admin) — editable.
+// Табло расписания 1920×1080. В редакторе (/admin) — editable, вкладки переключает учитель.
+// На экране (/) им управляет плейлист: tabs — какие вкладки показать по очереди, seconds — сколько секунд каждую,
+// run — номер показа (сменился → начать с первой вкладки), playing — идёт ли отсчёт; после последней вкладки — 'done'.
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   state,
@@ -8,7 +18,6 @@ import {
   setLessonField,
   getChanges,
   setChangeField,
-  hasChanges,
   maxLessonOfDay,
 } from '../store.js'
 import { ui, clearSelection } from '../ui.js'
@@ -22,7 +31,12 @@ const SettingsModal = defineAsyncComponent(() => import('./SettingsModal.vue'))
 
 const props = defineProps({
   editable: { type: Boolean, default: false },
+  tabs: { type: Array, default: null },
+  seconds: { type: Number, default: 15 },
+  run: { type: Number, default: 0 },
+  playing: { type: Boolean, default: true },
 })
+const emit = defineEmits(['done'])
 
 // ---------- масштабирование «табло» 1920×1080 под размер своего блока ----------
 const W = 1920
@@ -34,11 +48,8 @@ function fit() {
   if (el) scale.value = Math.min(el.clientWidth / W, el.clientHeight / H)
 }
 
-// ---------- фон: если положить public/background.jpg, он подхватится ----------
-const bgImage = ref('')
-const probe = new Image()
-probe.onload = () => (bgImage.value = `url("${probe.src}")`)
-probe.src = '/background.jpg'
+// ---------- фон: если положить public/background.jpg, он подхватится (проверяем один раз на всю страницу) ----------
+const bgImage = bgProbe
 
 // ---------- время и выбранный день ----------
 const now = ref(new Date())
@@ -74,7 +85,7 @@ const nextIdx = computed(() =>
     : -1,
 )
 
-// ---------- вкладки и автолистание ----------
+// ---------- вкладки и показ по плейлисту ----------
 const TABS = [...GRADES, 'changes']
 const tabIdx = ref(0)
 const tab = computed(() => TABS[tabIdx.value])
@@ -82,17 +93,27 @@ const isChanges = computed(() => tab.value === 'changes')
 const grade = computed(() => (isChanges.value ? '' : tab.value))
 const letters = computed(() => (isChanges.value ? [] : state.settings.letters[grade.value] || []))
 const theme = computed(() => THEMES[tab.value] || THEMES[5])
-const tabSeconds = computed(() => (isChanges.value ? state.settings.changesInterval : state.settings.interval))
 const elapsed = ref(0)
-// в редакторе вкладки не листаются сами — их переключает учитель
-const paused = computed(() => props.editable || !state.settings.autoplay)
-const progress = computed(() => Math.min(1, elapsed.value / (tabSeconds.value * 1000)))
+const playTabs = computed(() => (props.tabs?.length ? props.tabs : GRADES))
+const pos = ref(0) // позиция в playTabs
+let doneSent = false
+const progress = computed(() => (props.editable ? 0 : Math.min(1, elapsed.value / (props.seconds * 1000))))
 
-function inRotation(t) {
-  if (t !== 'changes') return true
-  if (!state.settings.changesInRotation) return false
-  return !state.settings.changesHideEmpty || hasChanges()
+function showPos(p) {
+  pos.value = p
+  const i = TABS.indexOf(playTabs.value[p])
+  if (i >= 0) tabIdx.value = i
+  elapsed.value = 0
 }
+// новый показ слайда — с первой вкладки
+watch(
+  () => props.run,
+  () => {
+    doneSent = false
+    if (!props.editable) showPos(0)
+  },
+  { immediate: true },
+)
 
 function goTab(i) {
   if (ui.editing) commit()
@@ -102,28 +123,22 @@ function goTab(i) {
   lastInteraction = Date.now()
 }
 
-function nextTab() {
-  for (let k = 1; k <= TABS.length; k++) {
-    const i = (tabIdx.value + k) % TABS.length
-    if (inRotation(TABS[i])) {
-      tabIdx.value = i
-      break
-    }
-  }
-  elapsed.value = 0
-}
-
 let lastTick = performance.now()
 function tick() {
   const t = performance.now()
   const dt = t - lastTick
   lastTick = t
-  if (!paused.value) {
-    elapsed.value += dt
-    if (elapsed.value >= tabSeconds.value * 1000) nextTab()
+  if (props.editable || !props.playing || doneSent) return
+  elapsed.value += dt
+  if (elapsed.value < props.seconds * 1000) return
+  if (pos.value + 1 < playTabs.value.length) showPos(pos.value + 1)
+  else {
+    // последняя вкладка показана — плейлист переходит к следующему слайду
+    elapsed.value = props.seconds * 1000
+    doneSent = true
+    emit('done')
   }
 }
-watch(tabSeconds, () => (elapsed.value = 0))
 
 // ---------- колонки текущей вкладки ----------
 const LESSON_FIELDS = [
@@ -355,7 +370,7 @@ onBeforeUnmount(() => {
               v-for="(t, i) in TABS"
               :key="t"
               class="tab"
-              :class="{ active: i === tabIdx, wide: t === 'changes', skipped: !inRotation(t) }"
+              :class="{ active: i === tabIdx, wide: t === 'changes' }"
               :title="t === 'changes' ? 'Изменения в расписании' : t + '-е классы'"
               @click="goTab(i)"
             >
@@ -572,9 +587,6 @@ onBeforeUnmount(() => {
 .tab.wide {
   width: 96px;
   font-size: 22px;
-}
-.tab.skipped:not(.active) {
-  opacity: 0.55;
 }
 .tab.active .lbl {
   color: var(--tab-text);

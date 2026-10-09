@@ -8,13 +8,8 @@ const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 const emit = defineEmits(['close'])
 
 const form = reactive({
-  interval: state.settings.interval,
-  autoplay: state.settings.autoplay,
   lessonsCount: state.settings.lessonsCount,
   letters: Object.fromEntries(GRADES.map((g) => [g, (state.settings.letters[g] || []).join(' ')])),
-  changesInRotation: state.settings.changesInRotation,
-  changesInterval: state.settings.changesInterval,
-  changesHideEmpty: state.settings.changesHideEmpty,
   changesCols: state.settings.changesCols,
   bells: state.settings.bells.map((b) => ({ name: b.name, days: [...b.days], text: b.text })),
 })
@@ -55,15 +50,10 @@ function parseLetters(str) {
 }
 
 function save() {
-  state.settings.interval = Math.min(600, Math.max(3, Number(form.interval) || 15))
-  state.settings.autoplay = form.autoplay
   state.settings.lessonsCount = Math.min(12, Math.max(1, Number(form.lessonsCount) || 8))
   const letters = {}
   for (const g of GRADES) letters[g] = parseLetters(form.letters[g])
   state.settings.letters = letters
-  state.settings.changesInRotation = form.changesInRotation
-  state.settings.changesInterval = Math.min(600, Math.max(3, Number(form.changesInterval) || 20))
-  state.settings.changesHideEmpty = form.changesHideEmpty
   state.settings.changesCols = Math.min(3, Math.max(2, Number(form.changesCols) || 3))
   state.settings.bells = form.bells.map((b) => ({ name: b.name, days: [...b.days], text: b.text.trim() }))
   emit('close')
@@ -100,20 +90,10 @@ async function importJson(e) {
     <div class="modal" @mousedown.stop>
       <h2>Настройки</h2>
 
-      <div class="row">
-        <label for="interval">Смена параллели, секунд</label>
-        <div class="range">
-          <input id="interval" v-model.number="form.interval" type="range" min="3" max="120" step="1" />
-          <input v-model.number="form.interval" type="number" min="3" max="600" class="num" />
-        </div>
-      </div>
-
-      <div class="row">
-        <label class="check">
-          <input v-model="form.autoplay" type="checkbox" />
-          Автоматически листать вкладки 5–11 классов
-        </label>
-      </div>
+      <p class="help">
+        Порядок показа, время на параллель и вкладку «Изменения» теперь задаёт раздел
+        <a href="#playlist" @click="emit('close')">Плейлист</a>.
+      </p>
 
       <div class="row">
         <label for="lc">Уроков в колонке</label>
@@ -121,25 +101,6 @@ async function importJson(e) {
       </div>
 
       <h3>Вкладка «Изменения»</h3>
-      <div class="row">
-        <label class="check">
-          <input v-model="form.changesInRotation" type="checkbox" />
-          Показывать при автолистании
-        </label>
-      </div>
-      <div class="row" :class="{ dim: !form.changesInRotation }">
-        <label for="ci">Время показа, секунд</label>
-        <div class="range">
-          <input id="ci" v-model.number="form.changesInterval" type="range" min="3" max="120" step="1" />
-          <input v-model.number="form.changesInterval" type="number" min="3" max="600" class="num" />
-        </div>
-      </div>
-      <div class="row" :class="{ dim: !form.changesInRotation }">
-        <label class="check">
-          <input v-model="form.changesHideEmpty" type="checkbox" />
-          Пропускать вкладку, если изменений нет
-        </label>
-      </div>
       <div class="row">
         <span>Колонок на вкладке</span>
         <div class="seg">
@@ -234,26 +195,6 @@ h3 {
   margin: 14px 0;
   font-weight: 600;
 }
-.range {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.range input[type='range'] {
-  width: 240px;
-  accent-color: var(--accent);
-}
-.check {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-.check input {
-  width: 22px;
-  height: 22px;
-  accent-color: var(--accent);
-}
 input[type='number'],
 input[type='text'] {
   padding: 10px 14px;
@@ -291,9 +232,6 @@ input:focus {
   flex: 1;
   min-width: 0;
 }
-.dim {
-  opacity: 0.5;
-}
 .seg {
   display: flex;
   gap: 6px;
@@ -316,6 +254,9 @@ input:focus {
 .days button.on {
   background: var(--accent);
   color: #222;
+}
+.help a {
+  color: var(--accent);
 }
 .help {
   margin: 0 0 12px;

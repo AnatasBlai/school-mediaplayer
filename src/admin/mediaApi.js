@@ -11,8 +11,7 @@ export const ACCEPT = [...IMAGE_EXT, ...VIDEO_EXT].join(',')
 const extOf = (name) => (name.match(/\.[^.]+$/)?.[0] || '').toLowerCase()
 const baseOf = (name) => name.replace(/\.[^.]+$/, '')
 
-export const mediaUrl = (item) => '/media/' + item.file
-export const thumbUrl = (item) => (item.thumb ? '/media/' + item.thumb : item.type === 'image' ? mediaUrl(item) : '')
+export { mediaUrl, thumbUrl } from '../playlist.js'
 
 // ---------- форматирование ----------
 
