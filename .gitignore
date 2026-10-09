@@ -9,3 +9,6 @@ media/
 *.zip
 *.tmp
 *.log
+
+# Собранные пакеты для школьного ПК (pack.bat)
+release/
