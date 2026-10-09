@@ -1,8 +1,35 @@
 <script setup>
 // Редактор (/admin): открывается в отдельной вкладке. Правки сразу уходят на сервер и видны на экранах.
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { saveStatus, connected } from '../store.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
+import MediaLibrary from './MediaLibrary.vue'
+
+// разделы редактора; текущий хранится в адресе (/admin#media), чтобы переживать обновление страницы
+const SECTIONS = [
+  { id: 'schedule', title: 'Расписание' },
+  { id: 'media', title: 'Медиатека' },
+]
+const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'schedule')
+const section = ref(fromHash())
+function go(id) {
+  section.value = id
+  history.replaceState(null, '', id === 'schedule' ? location.pathname : '#' + id)
+}
+const onHash = () => (section.value = fromHash())
+
+// файл, брошенный мимо медиатеки, браузер открыл бы вместо редактора — запрещаем
+const stopDrop = (e) => e.preventDefault()
+onMounted(() => {
+  window.addEventListener('hashchange', onHash)
+  window.addEventListener('dragover', stopDrop)
+  window.addEventListener('drop', stopDrop)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('hashchange', onHash)
+  window.removeEventListener('dragover', stopDrop)
+  window.removeEventListener('drop', stopDrop)
+})
 
 const status = computed(() => {
   if (!connected.value || saveStatus.value === 'offline')
@@ -18,16 +45,21 @@ const status = computed(() => {
     <header class="bar">
       <div class="brand">Управление экранами</div>
       <nav class="nav">
-        <button class="nav-btn on">Расписание</button>
+        <button v-for="s in SECTIONS" :key="s.id" class="nav-btn" :class="{ on: section === s.id }" @click="go(s.id)">
+          {{ s.title }}
+        </button>
       </nav>
-      <div class="hint">Клик — выделить ячейку, второй клик или ввод — редактировать, Enter — сохранить</div>
+      <div class="hint">
+        <template v-if="section === 'schedule'">Клик — выделить ячейку, второй клик или ввод — редактировать, Enter — сохранить</template>
+      </div>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
     </header>
     <main class="work">
-      <div class="board">
+      <div v-if="section === 'schedule'" class="board">
         <ScheduleBoard editable />
       </div>
+      <MediaLibrary v-else-if="section === 'media'" />
     </main>
   </div>
 </template>

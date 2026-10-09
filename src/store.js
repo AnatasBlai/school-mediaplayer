@@ -127,6 +127,23 @@ async function pollRemote() {
 
 export const connected = ref(true) // есть ли связь с сервером (для строки состояния в редакторе)
 
+let es = null
+const extraListeners = [] // [type, fn] — подписки компонентов (например, медиатека слушает 'media')
+
+/**
+ * Подписка на событие сервера (media, hello…). fn получает разобранные данные события.
+ * Возвращает функцию отписки — вызывать в onBeforeUnmount.
+ */
+export function onServerEvent(type, fn) {
+  const entry = [type, (e) => fn(JSON.parse(e.data || '{}'))]
+  extraListeners.push(entry)
+  es?.addEventListener(...entry)
+  return () => {
+    es?.removeEventListener(...entry)
+    extraListeners.splice(extraListeners.indexOf(entry), 1)
+  }
+}
+
 /**
  * Загружает данные и подписывается на /api/events: сервер сообщает о каждой правке,
  * и страница сразу забирает свежие данные.
@@ -136,7 +153,8 @@ export async function startSync({ reloadOnRestart = false } = {}) {
   await loadData()
   if (typeof EventSource === 'undefined') return
   let boot = null
-  const es = new EventSource('/api/events')
+  es = new EventSource('/api/events')
+  for (const entry of extraListeners) es.addEventListener(...entry)
   es.addEventListener('hello', (e) => {
     connected.value = true
     const b = JSON.parse(e.data).boot

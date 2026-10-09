@@ -21,10 +21,15 @@
 ## Архитектура
 
 ```
-api.js            общий для Vite-плагина и server.js:
-                  GET/PUT /api/data → data/schedule.json (атомарная запись через .tmp);
-                  GET /api/events — SSE: событие hello { boot } при подключении, data { updatedAt } после каждого PUT;
-                  handleMedia: /media/* из папки media/ с Range (206/416), защита от выхода за папку; таблица MIME
+api.js            общий для Vite-плагина и server.js: роутер API + GET/PUT /api/data → data/schedule.json
+                  (атомарная запись через .tmp). Остальное делегирует в server/
+server/
+  events.js       SSE /api/events: hello { boot } при подключении; broadcast('data', { updatedAt }) после PUT
+                  расписания, broadcast('media') после любого изменения медиатеки; ping раз в 25 с
+  media.js        медиатека: GET/POST /api/media, PUT /api/media/<id>/thumb, PATCH/DELETE /api/media/<id>;
+                  загрузка — сырое тело запроса потоком в media/<id>.<ext>.part → rename (без multipart, лимит 4 ГБ),
+                  .part удаляются при обрыве и при старте; раздача /media/* с Range (206/416), защита от выхода за папку
+  mime.js         таблица MIME
 server.js         dist/ + API + media; пути без расширения (/, /admin) → index.html; печатает адреса
 vite.config.js    подключает apiPlugin(), игнорирует data/ и media/ в watch
 src/
@@ -32,9 +37,15 @@ src/
                   отдельные чанки); экран ставит ui.readonly = true; вызывает startSync()
   DisplayApp.vue  экран для зрителей: ScheduleBoard на весь экран, курсор скрыт
   admin/
-    AdminApp.vue  редактор: тёмная панель сверху (разделы, статус сохранения/связи, «Открыть экран»), под ней ScheduleBoard editable
+    AdminApp.vue  редактор: тёмная панель сверху (разделы, статус сохранения/связи, «Открыть экран»), под ней раздел.
+                  Разделы: schedule (ScheduleBoard editable), media. Текущий раздел — в hash (/admin#media)
+    MediaLibrary.vue  медиатека: drag&drop, очередь загрузки с прогрессом, фильтры (тип/категория/поиск),
+                  карточки (название и категория правятся прямо в карточке), просмотр, удаление, место на диске
+    mediaApi.js   prepareFile(): фото уменьшаются в браузере так, чтобы закрывать 1920×1080 (cover), JPEG→JPEG 0.9,
+                  PNG/WebP→WebP, GIF не трогаем; превью 480 px JPEG для всего; видео проверяется через <video>
+                  (не играет / нет кадра, например HEVC → ошибка «нужен MP4 H.264»). Запросы к /api/media, загрузка через XHR
   store.js        reactive state, загрузка/сохранение (debounce 300 мс → PUT), startSync() — подписка на SSE,
-                  connected/saveStatus, getLessons/setLessonField, getChanges/setChangeField, maxLessonOfDay
+                  onServerEvent(type, fn) → отписка (для компонентов), connected/saveStatus, getLessons/setLessonField, getChanges/setChangeField, maxLessonOfDay
   defaultData.js  структура данных по умолчанию + стартовые настройки (normalize() подмешивает их к файлу)
   ui.js           выделение/редактирование ячейки: ui.sel = { letter: ключ колонки, idx, field }
   themes.js       цветовые темы по вкладкам (5…11, changes): bg-градиенты, accent, shadow, outline, tabText
@@ -76,6 +87,24 @@ src/
 - Индекс в массиве уроков = номер урока − 1. Пустые места внутри дня — `{ s: "", r: "" }`, пустой хвост обрезается.
 - Новые поля добавляем в `createDefaultData()`; `normalize()` в store.js подмешивает их к старым файлам.
 - Буквы классов кириллические, заглавные.
+
+## Данные: `data/media.json` и папка `media/`
+
+Тоже рабочие данные. Меняются только через API медиатеки (сервер сам читает-правит-пишет файл, клиент целиком его не PUT-ит).
+
+```js
+{ version: 1, items: [ {
+  id,            // [a-z0-9]+, время в base36 + случайный хвост; файл = media/<id><ext>
+  file,          // "<id>.mp4" — URL: /media/<file>
+  type,          // 'image' | 'video'
+  name,          // название для людей (по умолчанию — имя файла без расширения)
+  category,      // свободный текст, '' — без категории. Подсказки: «Мероприятия», «Образование»
+  size, w, h,    // байты и пиксели
+  duration,      // секунды, только у видео
+  thumb,         // "thumbs/<id>.jpg" или null
+  addedAt,       // ms
+} ] }
+```
 
 ## Поведение, которое легко сломать
 
@@ -128,9 +157,10 @@ src/
 0. [x] git-репозиторий, .gitignore, проверка сборки и боевого сервера.
 1. [x] Каркас: `/` и `/admin` (админка — отдельный lazy-чанк), SSE `/api/events` вместо опроса раз в 20 с,
        раздача `media/` с поддержкой Range, fallback на index.html. Редактирование расписания переезжает в `/admin`.
-2. [ ] Медиатека: потоковая загрузка без лимита в 5 МБ, уменьшение фото в браузере до 1920×1080, список, удаление.
+2. [x] Медиатека: потоковая загрузка без лимита в 5 МБ, уменьшение фото в браузере до 1920×1080, список, удаление.
 3. [ ] Плейлист и движок показа: слайды schedule / changes / image / video, длительность, видео до конца,
        предзагрузка следующего, редактор порядка и вкл/выкл. Данные — `data/playlist.json` (schedule.json не трогаем).
+       Не забыть: при удалении файла из медиатеки предупреждать, если он стоит в плейлисте, и убирать его оттуда.
 4. [ ] Правила показа (даты, время, дни недели) + в админке «что сейчас на экране».
 5. [ ] Шаблоны: полный экран / зоны.
 6. [ ] Новости (текст + картинка). Образовательный контент — те же фото/видео, отдельный тип не нужен,

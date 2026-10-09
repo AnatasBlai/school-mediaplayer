@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { handleApi, handleMedia, MIME } from './api.js'
+import { handleApi, MIME } from './api.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(ROOT, 'dist')
@@ -24,7 +24,7 @@ function sendFile(res, file, noCache) {
 }
 
 const server = http.createServer((req, res) => {
-  if (handleApi(req, res) || handleMedia(req, res)) return
+  if (handleApi(req, res)) return
 
   let urlPath
   try {
