@@ -55,12 +55,28 @@ const bgImage = bgProbe
 const now = ref(new Date())
 const picked = ref(null) // null — показываем сегодня
 const viewDate = computed(() => picked.value || now.value)
+const viewingToday = computed(() => !picked.value)
+// день расписания 1..6. В воскресенье — понедельник. На экране (не в редакторе), если сегодня уроков нет
+// ни у одного класса (например, суббота при пятидневке), — ближайший следующий день, где уроки есть.
 const dayKey = computed(() => {
   const d = viewDate.value.getDay()
-  return d === 0 ? 1 : d // в воскресенье показываем понедельник
+  if (!props.editable && viewingToday.value && maxLessonOfDay(d) === 0) {
+    for (let k = 1; k <= 6; k++) {
+      const n = ((d + k - 1) % 7) + 1 // следующие дни по кругу: 1..7, где 7 — воскресенье
+      if (n !== 7 && maxLessonOfDay(n) > 0) return n
+    }
+  }
+  return d === 0 ? 1 : d
 })
-const isSunday = computed(() => viewDate.value.getDay() === 0)
-const viewingToday = computed(() => !picked.value)
+// показан не сегодняшний день недели (воскресенье или день без уроков) — подписываем
+const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+const DAY_ACC = ['', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу']
+const shiftNote = computed(() => {
+  const d = viewDate.value.getDay()
+  if (dayKey.value === d) return ''
+  const why = d === 0 ? DAY_NAMES[0] : `${DAY_NAMES[d]}: уроков нет`
+  return `${why} — показано расписание на ${DAY_ACC[dayKey.value]}`
+})
 let lastInteraction = Date.now()
 
 function pickDate(d) {
@@ -78,9 +94,11 @@ const bell = computed(() => {
   return bellStatus(bellsForDay(state.settings.bells, dow), now.value, maxLessonOfDay(dow))
 })
 // индекс строки текущего/следующего урока (урок N → строка N-1)
-const nowIdx = computed(() => (viewingToday.value && bell.value.kind === 'lesson' ? bell.value.bell.n - 1 : -1))
+// подсветка — только когда показан именно сегодняшний день
+const showingToday = computed(() => viewingToday.value && !shiftNote.value)
+const nowIdx = computed(() => (showingToday.value && bell.value.kind === 'lesson' ? bell.value.bell.n - 1 : -1))
 const nextIdx = computed(() =>
-  viewingToday.value && (bell.value.kind === 'break' || bell.value.kind === 'before') && bell.value.left <= 15
+  showingToday.value && (bell.value.kind === 'break' || bell.value.kind === 'before') && bell.value.left <= 15
     ? bell.value.bell.n - 1
     : -1,
 )
@@ -390,7 +408,7 @@ onBeforeUnmount(() => {
         <!-- ОСНОВНАЯ ЧАСТЬ -->
         <main class="body">
           <section class="schedule" :style="sizes">
-            <div v-if="isSunday && !isChanges" class="note">Воскресенье — показано расписание на понедельник</div>
+            <div v-if="shiftNote && !isChanges" class="note">{{ shiftNote }}</div>
             <Transition name="slide" mode="out-in">
               <div :key="tab + '-' + dayKey" class="columns">
                 <EditColumn
