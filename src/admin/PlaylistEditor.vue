@@ -115,6 +115,7 @@ function addBlank() {
   playlist.blank.on = true
 }
 const tickerNow = computed(() => tickerTexts(playlist.ticker, now.value).length > 0)
+const tickerExpired = (t) => !tickerTexts({ on: true, items: [t] }, now.value).length
 function addTicker() {
   playlist.ticker.items.push({ text: '', until: '' })
   playlist.ticker.on = true
@@ -303,6 +304,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div v-for="(t, ti) in playlist.ticker.items" :key="ti" class="blank-period ticker-item">
           <input v-model="t.text" class="ticker-text" type="text" maxlength="200" placeholder="Текст объявления" />
           показывать до <input v-model="t.until" type="date" />
+          <span v-if="t.until" class="tk-state" :class="{ off: tickerExpired(t) }">{{ tickerExpired(t) ? 'уже не показывается' : 'показывается' }}</span>
           <button class="link" title="Убрать объявление" @click="playlist.ticker.items.splice(ti, 1)">✕</button>
         </div>
         <button v-if="playlist.ticker.items.length < 10" class="link" @click="addTicker">＋ объявление</button>
@@ -312,7 +314,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </span>
         <span class="hint">
           {{ tickerNow ? 'Сейчас строка на экране' : 'Сейчас строки нет: нет действующих объявлений' }}.
-          Дата не указана — объявление висит, пока его не уберут.
+          <template v-if="playlist.ticker.items.some((t) => !t.until)">Объявление без даты висит, пока его не уберут.</template>
         </span>
       </template>
       <span v-else class="hint">
@@ -657,6 +659,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .ticker-item {
   flex: 1 1 100%;
+}
+.tk-state {
+  color: #7ad08a;
+  font-size: 13px;
+}
+.tk-state.off {
+  color: #e0a35a;
 }
 .ticker-text {
   flex: 1;
