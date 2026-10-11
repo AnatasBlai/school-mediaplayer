@@ -2,7 +2,7 @@
 // Сцена 1920×1080 с фоном цветовой темы (как у табло), масштабируется под свой блок.
 // На ней рисуются новости и карточки колод — и на экране, и в превью редактора.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { THEMES, themeBackground } from '../themes.js'
+import { ALL_THEMES, themeBackground } from '../themes.js'
 
 const props = defineProps({ theme: { type: String, default: '6' } })
 
@@ -15,7 +15,7 @@ function fit() {
   if (el) scale.value = Math.min(el.clientWidth / W, el.clientHeight / H)
 }
 
-const t = computed(() => THEMES[props.theme] || THEMES[6])
+const t = computed(() => ALL_THEMES[props.theme] || ALL_THEMES[6])
 const stageStyle = computed(() => ({
   transform: `translate(-50%, -50%) scale(${scale.value})`,
   background: themeBackground(t.value),

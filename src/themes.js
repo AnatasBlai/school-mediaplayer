@@ -142,4 +142,112 @@ export const THEMES = {
   },
 }
 
+// Дополнительные темы только для новостей и колод (табло расписания их не рисует — см. ScheduleBoard).
+export const EXTRA_THEMES = {
+  sea: {
+    name: 'Морская волна',
+    bg: [
+      glow(22, 30, 40, 50, 'rgba(110, 240, 230, 0.9)'),
+      glow(72, 55, 35, 45, 'rgba(30, 175, 200, 0.8)'),
+      glow(86, 14, 30, 40, 'rgba(200, 255, 250, 0.5)'),
+      glow(50, 98, 50, 42, 'rgba(4, 25, 85, 0.95)'),
+      glow(0, 80, 30, 60, 'rgba(10, 60, 140, 0.9)'),
+      'linear-gradient(120deg, #0b6f8f 0%, #26b5c4 35%, #0f7aa5 65%, #072a66 100%)',
+    ],
+    base: '#041c44',
+    accent: '#a8fff2',
+    shadow: '0 2px 6px rgba(0, 30, 70, 0.55)',
+    outline: 'rgb(6, 50, 100)',
+    outlineOpacity: 0.55,
+    tabText: '#0a5170',
+  },
+  sunset: {
+    name: 'Закат',
+    bg: [
+      glow(22, 28, 40, 50, 'rgba(255, 150, 120, 0.95)'),
+      glow(72, 50, 35, 45, 'rgba(255, 190, 130, 0.8)'),
+      glow(86, 12, 30, 40, 'rgba(255, 225, 190, 0.55)'),
+      glow(50, 100, 55, 45, 'rgba(75, 25, 85, 0.95)'),
+      glow(0, 85, 30, 55, 'rgba(120, 35, 90, 0.9)'),
+      'linear-gradient(170deg, #e8585a 0%, #f18a6b 40%, #b44a7a 75%, #4a1a5c 100%)',
+    ],
+    base: '#2e0f3a',
+    accent: '#ffe1a8',
+    shadow: '0 2px 7px rgba(70, 10, 50, 0.6)',
+    outline: 'rgb(90, 25, 70)',
+    outlineOpacity: 0.55,
+    tabText: '#a63a4e',
+  },
+  mint: {
+    name: 'Мята',
+    bg: [
+      glow(22, 30, 40, 50, 'rgba(140, 235, 190, 0.8)'),
+      glow(72, 55, 35, 45, 'rgba(35, 165, 115, 0.85)'),
+      glow(86, 14, 30, 40, 'rgba(235, 255, 245, 0.55)'),
+      glow(50, 98, 50, 42, 'rgba(5, 80, 60, 0.92)'),
+      glow(0, 80, 30, 60, 'rgba(15, 120, 80, 0.9)'),
+      'linear-gradient(120deg, #17805c 0%, #35b585 35%, #1b7d5c 65%, #083f31 100%)',
+    ],
+    base: '#073528',
+    accent: '#f2fff0',
+    shadow: '0 2px 7px rgba(0, 50, 35, 0.6)',
+    outline: 'rgb(8, 70, 50)',
+    outlineOpacity: 0.55,
+    tabText: '#12694a',
+  },
+  graphite: {
+    name: 'Графит',
+    bg: [
+      glow(22, 30, 40, 50, 'rgba(95, 115, 140, 0.75)'),
+      glow(72, 55, 35, 45, 'rgba(70, 90, 115, 0.7)'),
+      glow(86, 14, 30, 40, 'rgba(120, 175, 215, 0.3)'),
+      glow(50, 100, 50, 42, 'rgba(8, 10, 14, 0.95)'),
+      glow(0, 80, 30, 60, 'rgba(12, 15, 20, 0.9)'),
+      'linear-gradient(120deg, #2a3038 0%, #3d4651 35%, #2b323b 65%, #101318 100%)',
+    ],
+    base: '#101318',
+    accent: '#7fd0ff',
+    shadow: '0 2px 7px rgba(0, 0, 0, 0.65)',
+    outline: 'rgb(12, 15, 20)',
+    outlineOpacity: 0.6,
+    tabText: '#2a3038',
+  },
+  lavender: {
+    name: 'Лаванда',
+    bg: [
+      glow(22, 30, 40, 50, 'rgba(185, 150, 245, 0.85)'),
+      glow(72, 55, 35, 45, 'rgba(110, 125, 225, 0.8)'),
+      glow(86, 14, 30, 40, 'rgba(225, 240, 255, 0.6)'),
+      glow(50, 98, 50, 42, 'rgba(70, 50, 140, 0.9)'),
+      glow(0, 80, 30, 60, 'rgba(110, 90, 190, 0.85)'),
+      'linear-gradient(120deg, #7456c0 0%, #9a80dc 35%, #6c72cc 65%, #3f3088 100%)',
+    ],
+    base: '#2c2160',
+    accent: '#fff2c4',
+    shadow: '0 2px 7px rgba(45, 25, 105, 0.6)',
+    outline: 'rgb(65, 45, 130)',
+    outlineOpacity: 0.55,
+    tabText: '#5a3fa8',
+  },
+  royal: {
+    name: 'Королевская',
+    bg: [
+      glow(22, 30, 40, 50, 'rgba(60, 100, 215, 0.8)'),
+      glow(72, 55, 35, 45, 'rgba(35, 65, 165, 0.8)'),
+      glow(86, 14, 30, 40, 'rgba(255, 210, 110, 0.35)'),
+      glow(50, 100, 50, 42, 'rgba(4, 10, 45, 0.95)'),
+      glow(0, 80, 30, 60, 'rgba(8, 20, 85, 0.95)'),
+      'linear-gradient(120deg, #0c2060 0%, #1c3e9a 35%, #12307e 65%, #050d33 100%)',
+    ],
+    base: '#050d33',
+    accent: '#ffd35c',
+    shadow: '0 2px 8px rgba(0, 5, 40, 0.65)',
+    outline: 'rgb(5, 12, 55)',
+    outlineOpacity: 0.6,
+    tabText: '#12307e',
+  },
+}
+
+export const ALL_THEMES = { ...THEMES, ...EXTRA_THEMES }
+
 export const themeBackground = (t) => t.bg.join(',\n')

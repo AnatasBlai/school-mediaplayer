@@ -8,6 +8,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
+import { THEMES } from './themes.js'
 import { STARTER_DECKS } from './starterDecks.js'
 import { parseCards } from '../src/deckText.js'
 
@@ -15,7 +16,6 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'decks.json')
 const STATE_FILE = path.join(ROOT, 'data', 'deck-state.json')
 
-const THEMES = ['5', '6', '7', '8', '9', '10', '11', 'changes']
 const ID = /^[a-z0-9]{4,32}$/
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
 const str = (v, max) => String(v ?? '').trim().slice(0, max)

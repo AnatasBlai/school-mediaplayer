@@ -7,13 +7,13 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
+import { THEMES } from './themes.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
 const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'deck']
-const THEMES = ['5', '6', '7', '8', '9', '10', '11', 'changes']
 // шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')

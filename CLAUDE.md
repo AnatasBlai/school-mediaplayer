@@ -71,8 +71,8 @@
 - **Не запускать** на ПК разработки `kiosk.bat` (развернёт браузер на второй монитор) и `autostart-install.bat`
   (создаст задания планировщика). Проверять: `tools\kiosk.ps1 -DryRun`, `tools\autostart.ps1 -DryRun`, разбор
   `[System.Management.Automation.Language.Parser]::ParseFile`.
-- Списки допустимых тем и типов слайдов **продублированы на сервере** (`THEMES`/`TYPES` в server/playlist.js и
-  server/decks.js). Добавил на клиенте — добавь и там.
+- Списки допустимых тем и типов слайдов **продублированы на сервере** (`THEMES` в server/themes.js, `TYPES` в
+  server/playlist.js и server/decks.js). Добавил на клиенте — добавь и там.
 - `ScheduleBoard` рисует фоны **всех** тем из `THEMES` стопкой. Не добавляй туда темы, не нужные табло, — слабый ПК.
 
 ## Архитектура
@@ -81,6 +81,7 @@
 server.js          раздаёт dist/ + API + /media/*; пути без расширения (/, /admin) → index.html; запускает расписание копий
 api.js             роутер API (общий для server.js и Vite-плагина) + GET/PUT /api/data → data/schedule.json (атомарно .tmp)
 server/
+  themes.js        список ключей тем THEMES (общий для playlist.js и decks.js; дублирует src/themes.js)
   events.js        SSE /api/events: hello { boot }; broadcast(data|media|playlist|decks|screens|backup); ping 25 с
   playlist.js      GET/PUT /api/playlist; cleanItem/cleanWhen/cleanBlank/cleanLayout; TYPES, THEMES;
                    removeMediaFromPlaylist(id) (фото/видео-слайд удаляется, у новости пропадает только фото)
@@ -98,7 +99,8 @@ src/
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, dayNumber, takeCard; startDecks()
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
-  themes.js        THEMES (5…11, changes): bg-градиенты, base, accent, shadow, outline, tabText; themeBackground(t)
+  themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
+                   и колоды); ALL_THEMES = оба; поля: bg-градиенты, base, accent, shadow, outline, tabText; themeBackground(t)
   bells.js         звонки: parseBells, bellsForDay, bellStatus (kind: none|before|lesson|break|after), fmt, plural
   fit.js           директива v-fit="мин.размер": уменьшает шрифт, пока текст не влезет в ширину
   defaultData.js   данные по умолчанию; ui.js — выделение ячейки в редакторе
@@ -189,7 +191,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 Стеклянные панели (полупрозрачный белый, скругления 40–64 px, `border: 1px solid var(--glass-border)`), белый текст
 с тенью `var(--shadow-text)`, акцент `var(--accent)` из темы. Заголовки и предметы — заглавными, Montserrat 800/900.
 Темы табло: 5 янтарь, 6 голубой, 7 зелёный+жёлтый, 8 красный+чёрный, 9 киберпанк (сетка), 10 розовый,
-11 фиолетовая «магия» (звёзды), changes — коричневый+зелёный. Редактор — тёмный интерфейс (#1d1f24, кнопки #3b404a,
+11 фиолетовая «магия» (звёзды), changes — коричневый+зелёный. Ещё 6 тем только для новостей и колод (`EXTRA_THEMES`,
+выбор — второй ряд «Ещё цвета» в ThemeSwatches): морская волна, закат, мята, графит, лаванда, королевская. Редактор — тёмный интерфейс (#1d1f24, кнопки #3b404a,
 акцент #3d7be0). Подписи и сообщения для пользователя — простым русским языком, без технических терминов.
 
 ## План
@@ -206,5 +209,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.4 — у двоеточия в часах добавлен отступ по бокам (Clock.vue), цифры не прижаты.
 
 - v0.8.5 — кнопка «⧉» копирует слайд под исходным (`cloneSlide` в src/playlist.js: JSON-копия, новый id, `on: true`); у новости сразу открывается NewsEditor.
+- v0.8.6 — 6 новых тем для новостей и колод (`EXTRA_THEMES`/`ALL_THEMES`, server/themes.js); табло их не рисует.
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
