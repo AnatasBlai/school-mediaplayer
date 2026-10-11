@@ -63,3 +63,10 @@ export function rulesText(w) {
   }
   return parts.join(' · ')
 }
+
+/** Тексты действующих объявлений бегущей строки (until включительно; пусто — без срока). Выключено — []. */
+export function tickerTexts(ticker, now) {
+  if (!ticker?.on) return []
+  const today = isoDate(now)
+  return (ticker.items || []).filter((i) => i.text && (!i.until || i.until >= today)).map((i) => i.text)
+}

@@ -1,5 +1,5 @@
 // Плейлист экрана: порядок слайдов, длительность, вкл/выкл — data/playlist.json.
-//   GET /api/playlist  → { version, updatedAt, layout, blank, items }; если файла нет — плейлист по умолчанию
+//   GET /api/playlist  → { version, updatedAt, layout, blank, ticker, items }; если файла нет — плейлист по умолчанию
 //                        из старых настроек автолистания (schedule.json), на диск он попадает при первом PUT
 //   PUT /api/playlist  — весь плейлист целиком (как /api/data), сервер проверяет и чистит поля
 import fs from 'node:fs'
@@ -44,6 +44,18 @@ function cleanBlank(b) {
     .filter(Boolean)
     .map(({ timeFrom, timeTo, days }) => ({ timeFrom, timeTo, days }))
   return { on: !!b?.on, periods }
+}
+
+/** Бегущая строка: { on, speed, items: [{ text до 200 знаков, until 'ГГГГ-ММ-ДД' | '' }] } — до 10 объявлений. */
+function cleanTicker(t) {
+  const items = (Array.isArray(t?.items) ? t.items : [])
+    .map((i) => ({
+      text: String(i?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
+      until: /^\d{4}-\d{2}-\d{2}$/.test(i?.until) ? i.until : '',
+    }))
+    .filter((i) => i.text)
+    .slice(0, 10)
+  return { on: !!t?.on, speed: t?.speed === 'slow' ? 'slow' : 'normal', items }
 }
 
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
@@ -107,6 +119,7 @@ function defaultPlaylist() {
     updatedAt: 0,
     layout: 'full',
     blank: cleanBlank(null),
+    ticker: cleanTicker(null),
     items: [
       cleanItem({ id: 'schedule0', type: 'schedule', duration: s.interval }),
       cleanItem({
@@ -128,6 +141,7 @@ export function readPlaylist() {
       updatedAt: Number(d.updatedAt) || 0,
       layout: cleanLayout(d.layout),
       blank: cleanBlank(d.blank),
+      ticker: cleanTicker(d.ticker),
       items: (d.items || []).map(cleanItem).filter(Boolean),
     }
   } catch {
@@ -189,6 +203,7 @@ export function handlePlaylist(req, res) {
       updatedAt: Number(d.updatedAt) || Date.now(),
       layout: cleanLayout(d.layout),
       blank: cleanBlank(d.blank),
+      ticker: cleanTicker(d.ticker),
       items: d.items.map(cleanItem).filter(Boolean),
     }
     writePlaylist(p)

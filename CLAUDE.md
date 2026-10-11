@@ -108,7 +108,7 @@ src/
   display/         ЭКРАН
     Player.vue     движок: плейлист по кругу; слоты active / leaving (~1 с под новым) / next (невидим, грузится);
                    schedule+changes — одно табло (ключ 'board'); неподходящие слайды пропускаются; нет ни одного —
-                   FALLBACK (расписание). Гашение экрана (blank). Отчёт POST /api/screens. now — раз в 10 с
+                   FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens. now — раз в 10 с
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
@@ -143,6 +143,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
 **playlist.json** — PUT целиком из редактора; при удалении файла правит сервер:
 ```js
 { version: 1, updatedAt, layout: 'full'|'panel', blank: { on, periods: [{ timeFrom, timeTo, days }] },
+  ticker: { on, speed: 'slow'|'normal', items: [{ text ≤200, until: 'ГГГГ-ММ-ДД'|'' }] },   // ≤10; cleanTicker; rules.js → tickerTexts
   items: [                                   // порядок = порядок показа
     { id, type: 'schedule', on, duration /* с на параллель */, grades: [] /* [] — все */ },
     { id, type: 'changes',  on, duration, skipEmpty },
@@ -215,5 +216,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.8 — дата у изменений `settings.changesDate`: поле «Изменения на» + «сегодня/завтра» в редакторе, заголовок «ИЗМЕНЕНИЯ НА 14 ОКТЯБРЯ», после дня экран не показывает (плашка «Очистить» в редакторе). fit.js: замер ширины у flex-элементов с базой 0.
 
 - v0.8.9 — предупреждение «текст не помещается»: проп `measure` + emit `overflow` у NewsSlide/DeckCard (только превью редактора; допуск 0,4 строки — у заголовка край букв выше строки), плашка `.a-warn` в NewsEditor/DeckEditor, ⚠ у карточки в списке (запоминается по просмотренным).
+
+- v0.8.10 — бегущая строка `playlist.ticker` (display/Ticker.vue: два куска на -50%, скорость px/с от высоты экрана; полоса в PlaylistEditor). Табло перекрыто снизу на ~40 px — допустимо.
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

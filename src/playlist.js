@@ -4,8 +4,9 @@ import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
 import { deckById } from './decks.js'
 
+// ticker — бегущая строка: { on, speed: 'slow'|'normal', items: [{ text, until: 'ГГГГ-ММ-ДД'|'' }] }
 // blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
-export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, items: [] })
+export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, ticker: { on: false, speed: 'normal', items: [] }, items: [] })
 export const playlistLoaded = ref(false)
 export const mediaLoaded = ref(false)
 export const media = ref([]) // элементы медиатеки (data/media.json)
@@ -77,13 +78,18 @@ export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id
 
 let applying = false
 let lastProbe = ''
-const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.items])
+const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.ticker, playlist.items])
 
 function apply(d) {
   applying = true
   playlist.updatedAt = Number(d.updatedAt) || 0
   playlist.layout = d.layout === 'panel' ? 'panel' : 'full'
   playlist.blank = { on: !!d.blank?.on, periods: Array.isArray(d.blank?.periods) ? d.blank.periods : [] }
+  playlist.ticker = {
+    on: !!d.ticker?.on,
+    speed: d.ticker?.speed === 'slow' ? 'slow' : 'normal',
+    items: Array.isArray(d.ticker?.items) ? d.ticker.items : [],
+  }
   playlist.items = Array.isArray(d.items) ? d.items : []
   lastProbe = probeOf()
   playlistLoaded.value = true

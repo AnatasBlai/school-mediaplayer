@@ -16,7 +16,7 @@ import {
   hasLayout,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
-import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText, isBlanked } from '../rules.js'
+import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText, isBlanked, tickerTexts } from '../rules.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
 import NewsEditor from './NewsEditor.vue'
@@ -113,6 +113,11 @@ const blankNow = computed(() => isBlanked(playlist.blank, now.value))
 function addBlank() {
   playlist.blank.periods.push({ timeFrom: '19:00', timeTo: '07:00', days: [] })
   playlist.blank.on = true
+}
+const tickerNow = computed(() => tickerTexts(playlist.ticker, now.value).length > 0)
+function addTicker() {
+  playlist.ticker.items.push({ text: '', until: '' })
+  playlist.ticker.on = true
 }
 function toggleBlankDay(p, d) {
   const i = p.days.indexOf(d)
@@ -285,6 +290,34 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         В указанные часы экран становится чёрным и ничего не проигрывает — например, ночью и в выходные.
         Монитор и компьютер при этом не выключаются.
         <button class="link" @click="addBlank">Настроить</button>
+      </span>
+    </div>
+
+    <div class="blank-bar" :class="{ active: playlist.ticker.on }">
+      <label class="switch" title="Показывать бегущую строку">
+        <input v-model="playlist.ticker.on" type="checkbox" />
+        <span></span>
+      </label>
+      <span class="lb-title">Бегущая строка</span>
+      <template v-if="playlist.ticker.on">
+        <div v-for="(t, ti) in playlist.ticker.items" :key="ti" class="blank-period ticker-item">
+          <input v-model="t.text" class="ticker-text" type="text" maxlength="200" placeholder="Текст объявления" />
+          показывать до <input v-model="t.until" type="date" />
+          <button class="link" title="Убрать объявление" @click="playlist.ticker.items.splice(ti, 1)">✕</button>
+        </div>
+        <button v-if="playlist.ticker.items.length < 10" class="link" @click="addTicker">＋ объявление</button>
+        <span class="grades">
+          <button :class="{ on: playlist.ticker.speed === 'slow' }" @click="playlist.ticker.speed = 'slow'">медленно</button>
+          <button :class="{ on: playlist.ticker.speed === 'normal' }" @click="playlist.ticker.speed = 'normal'">обычно</button>
+        </span>
+        <span class="hint">
+          {{ tickerNow ? 'Сейчас строка на экране' : 'Сейчас строки нет: нет действующих объявлений' }}.
+          Дата не указана — объявление висит, пока его не уберут.
+        </span>
+      </template>
+      <span v-else class="hint">
+        Срочное объявление внизу экрана поверх любых слайдов, например «Сегодня сокращённые уроки».
+        <button class="link" @click="addTicker">Настроить</button>
       </span>
     </div>
 
@@ -614,6 +647,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   font-weight: 600;
 }
 .blank-period input[type='time'] {
+  border: 1px solid #3b404a;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #1d1f24;
+  color: #f2f2f2;
+  font: inherit;
+  color-scheme: dark;
+}
+.ticker-item {
+  flex: 1 1 100%;
+}
+.ticker-text {
+  flex: 1;
+  min-width: 160px;
+}
+.ticker-item input {
   border: 1px solid #3b404a;
   border-radius: 6px;
   padding: 3px 6px;

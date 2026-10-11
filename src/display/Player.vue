@@ -17,6 +17,7 @@ import MediaSlide from './MediaSlide.vue'
 import NewsSlide from './NewsSlide.vue'
 import DeckSlide from './DeckSlide.vue'
 import { ruleState, isBlanked } from '../rules.js'
+import Ticker from './Ticker.vue'
 import { decksLoaded, deckById, startDecks } from '../decks.js'
 
 startPlaylist()
@@ -177,6 +178,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="player">
     <div v-if="blanked" class="blank"></div>
+    <Ticker v-else :now="now" />
     <div v-for="s in slots" :key="s.key" class="slide" :class="s.role">
       <ScheduleBoard
         v-if="isBoard(s.item)"
