@@ -26,6 +26,15 @@ export const SLIDE_TITLES = {
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
+// анимации новости: значение → [название, что делает]
+export const NEWS_ANIMS = {
+  none: ['Без анимации', 'Новость стоит неподвижно.'],
+  zoom: ['Приближение', 'Фото медленно приближается за время показа.'],
+  drift: ['Дрейф', 'Фото плавно плывёт вбок.'],
+  parallax: ['Параллакс', 'Фото и панель с текстом чуть смещаются в разные стороны.'],
+  rise: ['Появление текста', 'Панель с текстом в начале плавно поднимается и проявляется.'],
+}
+
 /** Глубокая копия слайда с новым id; копия всегда включена. */
 export function cloneSlide(it) {
   return { ...JSON.parse(JSON.stringify(it)), id: newId(), on: true }
@@ -34,7 +43,7 @@ export function cloneSlide(it) {
 /** Новый слайд. Для 'image'/'video' второй аргумент — id файла, для 'deck' — id колоды. */
 export function makeSlide(type, mediaId) {
   if (type === 'news') {
-    return { id: newId(), type, on: true, label: 'Новости', title: '', text: '', date: '', fit: 'cover', theme: '6', duration: 15 }
+    return { id: newId(), type, on: true, label: 'Новости', title: '', text: '', date: '', fit: 'cover', theme: '6', anim: 'zoom', duration: 15 }
   }
   if (type === 'deck') return { id: newId(), type, on: true, deck: mediaId, mode: 'next' }
   if (type === 'schedule') return { id: newId(), type, on: true, duration: 15, grades: [] }

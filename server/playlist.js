@@ -13,6 +13,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
+const NEWS_ANIMS = ['none', 'zoom', 'drift', 'parallax', 'rise'] // дублирует NEWS_ANIMS в src/playlist.js
 const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'deck']
 // шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
@@ -72,6 +73,7 @@ function cleanItem(x) {
     if (/^[a-z0-9]+$/.test(x.media || '')) it.media = x.media
     it.fit = x.fit === 'contain' ? 'contain' : 'cover'
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
     it.duration = secs(x.duration, 15)
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день

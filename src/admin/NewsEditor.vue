@@ -2,7 +2,7 @@
 // Окно правки новости: форма слева, живое превью справа. Правки сразу пишутся в слайд плейлиста
 // (и уходят на экраны, как любая правка плейлиста).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { mediaById, thumbUrl, layoutOf } from '../playlist.js'
+import { mediaById, thumbUrl, layoutOf, NEWS_ANIMS } from '../playlist.js'
 import NewsSlide from '../display/NewsSlide.vue'
 import MediaPicker from './MediaPicker.vue'
 import ThemeSwatches from './ThemeSwatches.vue'
@@ -92,6 +92,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </div>
           </div>
 
+          <div>
+            <span class="a-label">Анимация</span>
+            <div class="photo-row">
+              <span class="a-seg">
+                <button v-for="(v, k) in NEWS_ANIMS" :key="k" :class="{ on: (item.anim || 'none') === k }" @click="item.anim = k">{{ v[0] }}</button>
+              </span>
+            </div>
+            <span class="a-hint">{{ NEWS_ANIMS[item.anim || 'none'][1] }}<template v-if="!item.media && ['zoom', 'drift', 'parallax'].includes(item.anim)"> Без фото — как «Появление текста».</template></span>
+          </div>
+
           <div class="row2">
             <div>
               <span class="a-label">Цвет</span>
@@ -106,7 +116,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
         <div class="preview">
           <span class="a-label">Так будет на экране</span>
-          <div class="screen"><NewsSlide :item="item" :active="false" :layout="layoutOf(item)" /></div>
+          <div class="screen"><NewsSlide :item="item" :active="false" preview :layout="layoutOf(item)" /></div>
         </div>
       </div>
     </div>

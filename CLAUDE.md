@@ -147,7 +147,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
     { id, type: 'changes',  on, duration, skipEmpty },
     { id, type: 'image',    on, media, fit: 'cover'|'contain', duration },
     { id, type: 'video',    on, media, fit, sound },            // до конца
-    { id, type: 'news',     on, label, title, text, date, media?, fit, theme, duration },
+    { id, type: 'news',     on, label, title, text, date, media?, fit, theme, anim /* none|zoom|drift|parallax|rise, нет → none */, duration },
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
   ] }
 // у image/video/news/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days }
@@ -210,5 +210,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 - v0.8.5 — кнопка «⧉» копирует слайд под исходным (`cloneSlide` в src/playlist.js: JSON-копия, новый id, `on: true`); у новости сразу открывается NewsEditor.
 - v0.8.6 — 6 новых тем для новостей и колод (`EXTRA_THEMES`/`ALL_THEMES`, server/themes.js); табло их не рисует.
+- v0.8.7 — анимация новости `anim` (NewsSlide: класс `run` ставится при active и не снимается; `preview` — по кругу; `NEWS_ANIMS` дублируется в server/playlist.js).
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
