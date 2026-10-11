@@ -8,6 +8,7 @@ import {
   media,
   mediaById,
   makeSlide,
+  cloneSlide,
   startPlaylist,
   slideTitle,
   SLIDE_TITLES,
@@ -123,6 +124,12 @@ function toggleBlankDay(p, d) {
 
 function remove(i) {
   playlist.items.splice(i, 1)
+}
+// копия сразу под исходной строкой; новость открывается на правку
+function copySlide(i) {
+  const copy = cloneSlide(playlist.items[i])
+  playlist.items.splice(i + 1, 0, copy)
+  if (copy.type === 'news') newsEdit.value = playlist.items[i + 1]
 }
 function moveBy(i, d) {
   const j = i + d
@@ -417,6 +424,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div class="acts">
           <button title="Выше" :disabled="i === 0" @click="moveBy(i, -1)">↑</button>
           <button title="Ниже" :disabled="i === items.length - 1" @click="moveBy(i, 1)">↓</button>
+          <button title="Копировать слайд" @click="copySlide(i)">⧉</button>
           <button class="del" title="Убрать из плейлиста (файл останется в медиатеке)" @click="remove(i)">✕</button>
         </div>
 
@@ -725,7 +733,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .row {
   display: grid;
-  grid-template-columns: 22px 26px 128px minmax(0, 1fr) 150px 52px 110px;
+  grid-template-columns: 22px 26px 128px minmax(0, 1fr) 150px 52px 144px;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;

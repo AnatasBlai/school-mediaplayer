@@ -26,6 +26,11 @@ export const SLIDE_TITLES = {
 
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
+/** Глубокая копия слайда с новым id; копия всегда включена. */
+export function cloneSlide(it) {
+  return { ...JSON.parse(JSON.stringify(it)), id: newId(), on: true }
+}
+
 /** Новый слайд. Для 'image'/'video' второй аргумент — id файла, для 'deck' — id колоды. */
 export function makeSlide(type, mediaId) {
   if (type === 'news') {
