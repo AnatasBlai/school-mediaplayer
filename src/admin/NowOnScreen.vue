@@ -87,13 +87,13 @@ function view(s) {
 <style scoped>
 .now {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
 }
 .none {
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-radius: 10px;
-  background: #26292f;
+  background: #1d1f24;
   color: #a4a9b3;
   font-weight: 600;
 }
@@ -101,11 +101,9 @@ function view(s) {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 360px;
-  max-width: 520px;
-  padding: 8px 14px 8px 8px;
-  border-radius: 12px;
-  background: #26292f;
+  padding: 8px 12px 8px 8px;
+  border-radius: 10px;
+  background: #1d1f24;
   border: 1px solid #2f5d3a;
 }
 .scr.offline {
@@ -114,7 +112,7 @@ function view(s) {
 }
 .thumb {
   flex: 0 0 auto;
-  width: 112px;
+  width: 96px;
   aspect-ratio: 16 / 9;
   border-radius: 8px;
   overflow: hidden;

@@ -97,7 +97,7 @@ src/
                    changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay; saveStatus, connected
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
-  decks.js         стор колод; makeDeck/makeCard, cardSeconds, dayNumber, takeCard; startDecks()
+  decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
@@ -114,9 +114,12 @@ src/
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
-  admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal…)
+  admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal, a-switch, a-chips, a-link, a-check…)
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
-    PlaylistEditor.vue  строки слайдов, шаблон, гашение, «Когда», добавление (фото/видео, новость, колода)
+    PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд»), сводка «Настройки экрана»
+                   (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
+                   компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
+                   удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     NewsEditor.vue окно новости с живым превью; CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
@@ -223,5 +226,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 - v0.8.12 — слайд «Обратный отсчёт» (`countdown`): CountdownSlide/CountdownEditor, `countdownState` в rules.js; без времени идёт весь день события, потом пропускается в `playable()`, в редакторе метка «событие прошло».
 - v0.8.13 — срочный режим `playlist.urgent`: кнопка ⚠ в строке слайда, красная плашка в «Плейлисте» и шапке, «Срочный режим» в «Сейчас на экране»; слайд удалён → режим сам выключается (клиент и `cleanUrgent` на сервере).
+- v0.8.14 — редизайн «Плейлиста»: инструменты слева (меню добавления, окно «Настройки экрана»), очередь справа, все настройки слайда в окне ⚙; ↑↓ убраны.
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

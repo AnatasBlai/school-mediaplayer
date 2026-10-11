@@ -20,6 +20,11 @@ export function makeCard(type) {
 
 /** Сколько секунд идёт карточка на экране. */
 export const cardSeconds = (deck, card) => (card.type === 'fact' ? deck.factTime : deck.qTime + deck.aTime)
+/** Сколько в среднем идёт одна карточка колоды, с (нет колоды или карточек — 0). */
+export function avgCardSeconds(deck) {
+  if (!deck?.cards.length) return 0
+  return Math.round(deck.cards.reduce((s, c) => s + cardSeconds(deck, c), 0) / deck.cards.length)
+}
 
 /** Номер дня по местному времени — для режима «одна карточка в день». */
 export function dayNumber(d = new Date()) {

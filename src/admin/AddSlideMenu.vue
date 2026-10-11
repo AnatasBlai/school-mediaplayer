@@ -1,0 +1,223 @@
+<script setup>
+// Кнопка «＋ Добавить слайд» с выезжающим меню типов. Само добавление делает PlaylistEditor (событие add).
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { decks } from '../decks.js'
+
+const emit = defineEmits(['add']) // add(type, deckId?)  type: media | schedule | changes | news | countdown | deck
+
+const KINDS = [
+  { type: 'media', icon: '▣', title: 'Фото или видео', note: 'Файлы из медиатеки' },
+  { type: 'schedule', icon: '5–11', title: 'Расписание', note: 'Табло уроков по параллелям' },
+  { type: 'changes', icon: 'Изм.', title: 'Изменения', note: 'Замены в расписании' },
+  { type: 'news', icon: 'Нов.', title: 'Новость', note: 'Заголовок, текст и фото' },
+  { type: 'countdown', icon: '⏳', title: 'Обратный отсчёт', note: 'Сколько дней до события' },
+]
+
+const open = ref(false)
+const deckOpen = ref(false) // раскрыт ли список колод внутри меню
+const root = ref(null)
+
+function toggle() {
+  open.value = !open.value
+  deckOpen.value = false
+}
+function pick(type, deck) {
+  open.value = false
+  emit('add', type, deck)
+}
+
+// закрыть по клику мимо меню и по Esc
+const onDown = (e) => open.value && !root.value?.contains(e.target) && (open.value = false)
+const onKey = (e) => e.key === 'Escape' && (open.value = false)
+onMounted(() => {
+  window.addEventListener('mousedown', onDown)
+  window.addEventListener('keydown', onKey)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', onDown)
+  window.removeEventListener('keydown', onKey)
+})
+</script>
+
+<template>
+  <div ref="root" class="add">
+    <button class="a-btn primary big" :class="{ open }" @click="toggle">
+      <span>＋ Добавить слайд</span>
+      <span class="arrow">▾</span>
+    </button>
+
+    <div class="menu" :class="{ open }">
+      <button v-for="k in KINDS" :key="k.type" class="item" @click="pick(k.type)">
+        <span class="ico" :class="k.type">{{ k.icon }}</span>
+        <span class="txt">
+          <b>{{ k.title }}</b>
+          <small>{{ k.note }}</small>
+        </span>
+      </button>
+      <button class="item" :class="{ on: deckOpen }" @click="deckOpen = !deckOpen">
+        <span class="ico deck">?!</span>
+        <span class="txt">
+          <b>Колода</b>
+          <small>Факты, вопросы, загадки — каждый показ новая карточка</small>
+        </span>
+        <span class="more">{{ deckOpen ? '▴' : '▾' }}</span>
+      </button>
+      <div v-if="deckOpen" class="decks">
+        <button v-for="d in decks.list" :key="d.id" class="deck-item" @click="pick('deck', d.id)">
+          {{ d.name }} <span>{{ d.cards.length }}</span>
+        </button>
+        <a v-if="!decks.list.length" class="a-link" href="#decks">Колод пока нет — создать →</a>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.add {
+  position: relative;
+}
+.big {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-size: 15px;
+}
+.arrow {
+  transition: transform 0.2s;
+}
+.big.open .arrow {
+  transform: rotate(180deg);
+}
+/* меню выезжает вниз из-под кнопки */
+.menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #2b2e35;
+  border: 1px solid #3b404a;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    visibility 0.15s;
+}
+.menu.open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  visibility: visible;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 10px 7px 7px;
+  background: transparent;
+  color: #f2f2f2;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover,
+.item.on {
+  background: #3b404a;
+}
+.ico {
+  flex: 0 0 auto;
+  width: 56px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: #000;
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+}
+.ico.media {
+  background: linear-gradient(135deg, #4a6a8a, #1c2a3a);
+  font-size: 16px;
+}
+.ico.schedule {
+  background: linear-gradient(135deg, #f0a32a, #c45a10);
+}
+.ico.changes {
+  background: linear-gradient(135deg, #6b4a2b, #3f7a3a);
+}
+.ico.news {
+  background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.ico.countdown {
+  background: linear-gradient(135deg, #e0752a, #7a1f0c);
+  font-size: 15px;
+}
+.ico.deck {
+  background: linear-gradient(135deg, #7a2fd0, #12052e);
+  font-size: 15px;
+}
+.txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.txt b {
+  font-weight: 800;
+  font-size: 14px;
+}
+.txt small {
+  color: #8b909a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.more {
+  color: #8b909a;
+}
+.decks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 4px 75px;
+}
+.deck-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 10px;
+  background: #22252b;
+  color: #e6e8ec;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.deck-item:hover {
+  background: #3b404a;
+}
+.deck-item span {
+  color: #8b909a;
+}
+.decks .a-link {
+  padding: 6px 10px;
+}
+</style>
