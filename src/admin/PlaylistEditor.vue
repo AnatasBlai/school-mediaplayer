@@ -16,10 +16,11 @@ import {
   hasLayout,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
-import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, rulesText, isBlanked, tickerTexts } from '../rules.js'
+import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState, countdownState, rulesText, isBlanked, tickerTexts } from '../rules.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
 import NewsEditor from './NewsEditor.vue'
+import CountdownEditor from './CountdownEditor.vue'
 import { decks, deckById, cardSeconds, startDecks } from '../decks.js'
 
 startPlaylist()
@@ -55,9 +56,9 @@ function deckSeconds(it) {
 }
 const ruleOk = (it) => ruleState(it.when, now.value).ok
 // в круг сейчас входят включённые слайды, у которых правила подходят под текущий момент
-const total = computed(() => items.value.filter((it) => it.on && ruleOk(it)).reduce((s, it) => s + secondsOf(it), 0))
+const total = computed(() => items.value.filter((it) => it.on && ruleOk(it) && !cdOver(it)).reduce((s, it) => s + secondsOf(it), 0))
 const enabledCount = computed(() => items.value.filter((it) => it.on).length)
-const nowCount = computed(() => items.value.filter((it) => it.on && ruleOk(it)).length)
+const nowCount = computed(() => items.value.filter((it) => it.on && ruleOk(it) && !cdOver(it)).length)
 
 function fmtTotal(sec) {
   const m = Math.floor(sec / 60)
@@ -136,6 +137,7 @@ function copySlide(i) {
   const copy = cloneSlide(playlist.items[i])
   playlist.items.splice(i + 1, 0, copy)
   if (copy.type === 'news') newsEdit.value = playlist.items[i + 1]
+  if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
 }
 function moveBy(i, d) {
   const j = i + d
@@ -186,6 +188,22 @@ function closeNews() {
   }
 }
 
+// обратный отсчёт: окно правки; отсчёт без даты при закрытии убираем (сервер его всё равно не сохранит)
+const cdEdit = ref(null)
+function addCountdown() {
+  playlist.items.push(makeSlide('countdown'))
+  cdEdit.value = playlist.items[playlist.items.length - 1]
+}
+function closeCountdown() {
+  const it = cdEdit.value
+  cdEdit.value = null
+  if (it && !it.date) {
+    const i = playlist.items.indexOf(it)
+    if (i >= 0) playlist.items.splice(i, 1)
+  }
+}
+const cdOver = (it) => it.type === 'countdown' && countdownState(it, now.value).over
+
 function addDeck(e) {
   const id = e.target.value
   e.target.value = ''
@@ -233,6 +251,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <button class="btn" @click="addBoard('schedule')">＋ Расписание</button>
       <button class="btn" @click="addBoard('changes')">＋ Изменения</button>
       <button class="btn" @click="addNews">＋ Новость</button>
+      <button class="btn" @click="addCountdown">＋ Отсчёт</button>
       <select class="btn add-deck" title="Колода: факты, вопросы, загадки — каждый показ новая карточка" @change="addDeck">
         <option value="">＋ Колода…</option>
         <option v-for="d in decks.list" :key="d.id" :value="d.id">{{ d.name }} ({{ d.cards.length }})</option>
@@ -356,6 +375,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else-if="it.type === 'schedule'">5–11</span>
           <span v-else-if="it.type === 'changes'">Изм.</span>
           <span v-else-if="it.type === 'news'">Новость</span>
+          <span v-else-if="it.type === 'countdown'">⏳</span>
           <span v-else-if="it.type === 'deck'">?!</span>
           <span v-else-if="!fileOf(it)">?</span>
           <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -366,6 +386,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <div class="kind">
             {{ SLIDE_TITLES[it.type] }}
             <span v-if="onScreenIds.has(it.id)" class="tag live">▶ на экране</span>
+            <span v-else-if="it.on && cdOver(it)" class="tag wait">событие прошло</span>
             <span v-else-if="it.on && !ruleOk(it)" class="tag wait">сейчас не идёт: {{ ruleState(it.when, now).reason }}</span>
           </div>
 
@@ -379,6 +400,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <template v-if="it.type === 'news'">
               <button class="edit-btn" @click="newsEdit = it">✎ Изменить</button>
               <span class="news-text">{{ it.text }}</span>
+            </template>
+            <template v-if="it.type === 'countdown'">
+              <button class="edit-btn" @click="cdEdit = it">✎ Изменить</button>
+              <span class="news-text">{{ it.note }}</span>
             </template>
             <template v-if="it.type === 'deck'">
               <select v-model="it.deck" class="layout-sel" title="Какая колода">
@@ -499,6 +524,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </ol>
 
     <NewsEditor v-if="newsEdit" :item="newsEdit" @close="closeNews" />
+    <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
 
     <!-- выбор файлов из медиатеки -->
     <div v-if="picker.open" class="modal-back" @mousedown.self="picker.open = false">
@@ -721,10 +747,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   text-decoration: none;
 }
 .thumb.news,
+.thumb.countdown,
 .thumb.deck {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
   color: #fff;
   font-weight: 900;
+}
+.thumb.countdown {
+  background: linear-gradient(135deg, #e0752a, #7a1f0c);
+  font-size: 22px;
 }
 .thumb.deck {
   background: linear-gradient(135deg, #7a2fd0, #12052e);

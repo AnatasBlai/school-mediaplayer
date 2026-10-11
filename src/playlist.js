@@ -3,6 +3,8 @@
 import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
 import { deckById } from './decks.js'
+import { countdownState } from './rules.js'
+import { plural } from './bells.js'
 
 // ticker — бегущая строка: { on, speed: 'slow'|'normal', items: [{ text, until: 'ГГГГ-ММ-ДД'|'' }] }
 // blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
@@ -22,6 +24,7 @@ export const SLIDE_TITLES = {
   image: 'Фото',
   video: 'Видео',
   news: 'Новость',
+  countdown: 'Отсчёт',
   deck: 'Колода',
 }
 
@@ -46,6 +49,7 @@ export function makeSlide(type, mediaId) {
   if (type === 'news') {
     return { id: newId(), type, on: true, label: 'Новости', title: '', text: '', date: '', fit: 'cover', theme: '6', anim: 'zoom', duration: 15 }
   }
+  if (type === 'countdown') return { id: newId(), type, on: true, title: '', date: '', time: '', note: '', theme: '6', duration: 15 }
   if (type === 'deck') return { id: newId(), type, on: true, deck: mediaId, mode: 'next' }
   if (type === 'schedule') return { id: newId(), type, on: true, duration: 15, grades: [] }
   if (type === 'changes') return { id: newId(), type, on: true, duration: 20, skipEmpty: true }
@@ -55,8 +59,8 @@ export function makeSlide(type, mediaId) {
 
 // шаблон слайда: 'full' — весь экран, 'panel' — содержимое слева, справа панель с часами, звонками и изменениями
 export const LAYOUT_TITLES = { full: 'Весь экран', panel: 'С панелью справа' }
-/** Есть ли у слайда шаблон (фото, видео, новость, колода). Табло расписания всегда во весь экран. */
-export const hasLayout = (it) => ['image', 'video', 'news', 'deck'].includes(it.type)
+/** Есть ли у слайда шаблон (фото, видео, новость, отсчёт, колода). Табло расписания всегда во весь экран. */
+export const hasLayout = (it) => ['image', 'video', 'news', 'countdown', 'deck'].includes(it.type)
 /** Шаблон, по которому слайд реально показывается: свой у слайда или общий. */
 export const layoutOf = (it) => (hasLayout(it) ? it.layout || playlist.layout || 'full' : 'full')
 
@@ -67,6 +71,11 @@ export function slideTitle(it) {
   }
   if (it.type === 'changes') return 'Изменения в расписании'
   if (it.type === 'news') return it.title || it.text?.slice(0, 60) || 'Новость без заголовка'
+  if (it.type === 'countdown') {
+    const c = countdownState(it)
+    const left = c.over || !it.date ? '' : c.today ? ': уже сегодня' : ': ' + c.days + ' ' + plural(c.days, 'день', 'дня', 'дней')
+    return 'До ' + (it.title || '…') + left
+  }
   if (it.type === 'deck') return deckById(it.deck)?.name || 'Колода удалена'
   return mediaById(it.media)?.name || 'Файл удалён'
 }

@@ -43,7 +43,7 @@ function view(s) {
     title,
     tab,
     thumb: file ? thumbUrl(file) : '',
-    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : '',
+    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'countdown' ? '⏳' : '',
     cls: sl.type,
     num: item ? playlist.items.indexOf(item) + 1 : 0,
   }
@@ -130,6 +130,9 @@ function view(s) {
 }
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.thumb.countdown {
+  background: linear-gradient(135deg, #e0752a, #7a1f0c);
 }
 .thumb.deck {
   background: linear-gradient(135deg, #7a2fd0, #12052e);

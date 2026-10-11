@@ -6,7 +6,7 @@
 // Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
 // табло само плавно меняет вкладку и тему.
 // Правила показа (даты, время, дни) проверяются по часам этого компьютера.
-// Фото, видео, новости и колоды идут по шаблону (layoutOf): на весь экран или с панелью справа —
+// Фото, видео, новости, отсчёты и колоды идут по шаблону (layoutOf): на весь экран или с панелью справа —
 // панель рисует сам слайд (MediaSlide поверх превью, NewsSlide/DeckCard — внутри своей сцены).
 // О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -15,8 +15,9 @@ import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist, layout
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
 import NewsSlide from './NewsSlide.vue'
+import CountdownSlide from './CountdownSlide.vue'
 import DeckSlide from './DeckSlide.vue'
-import { ruleState, isBlanked } from '../rules.js'
+import { ruleState, isBlanked, countdownState } from '../rules.js'
 import Ticker from './Ticker.vue'
 import { decksLoaded, deckById, startDecks } from '../decks.js'
 
@@ -40,6 +41,7 @@ function playable(it) {
   if (it.type === 'schedule') return boardTabs(it).length > 0
   if (it.type === 'changes') return !it.skipEmpty || hasChanges(now.value)
   if (it.type === 'news') return !!(it.title || it.text)
+  if (it.type === 'countdown') return !!it.date && !countdownState(it, now.value).over
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -191,6 +193,13 @@ onBeforeUnmount(() => {
       />
       <NewsSlide
         v-else-if="s.item.type === 'news'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <CountdownSlide
+        v-else-if="s.item.type === 'countdown'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

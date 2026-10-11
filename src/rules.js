@@ -70,3 +70,21 @@ export function tickerTexts(ticker, now) {
   const today = isoDate(now)
   return (ticker.items || []).filter((i) => i.text && (!i.until || i.until >= today)).map((i) => i.text)
 }
+
+/**
+ * Состояние слайда «Обратный отсчёт» на момент now.
+ * Без времени событие длится весь день date (после него — прошло); со временем — до этой минуты.
+ * Возвращает { over, days, today, hours, mins }: days — целых календарных дней до даты;
+ * today — событие сегодня (hours/mins — сколько осталось, если задано время).
+ */
+export function countdownState(it, now = new Date()) {
+  const [y, m, d] = String(it.date || '').split('-').map(Number)
+  if (!y || !m || !d) return { over: true, days: 0, today: false, hours: 0, mins: 0 }
+  const [hh, mm] = it.time ? it.time.split(':').map(Number) : [0, 0]
+  const target = new Date(y, m - 1, d, hh, mm)
+  const end = it.time ? target : new Date(y, m - 1, d + 1)
+  if (now >= end) return { over: true, days: 0, today: false, hours: 0, mins: 0 }
+  const days = Math.round((new Date(y, m - 1, d) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000)
+  const left = Math.max(0, Math.ceil((target - now) / 60000))
+  return { over: false, days, today: days <= 0, hours: Math.floor(left / 60), mins: left % 60 }
+}

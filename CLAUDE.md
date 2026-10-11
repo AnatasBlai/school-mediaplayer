@@ -110,13 +110,14 @@ src/
                    schedule+changes — одно табло (ключ 'board'); неподходящие слайды пропускаются; нет ни одного —
                    FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens. now — раз в 10 с
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
+    CountdownSlide.vue  обратный отсчёт (число + слово через plural; < суток — «Уже сегодня!» / «Осталось 5 ч 20 мин»); состояние — countdownState в rules.js
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
   admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal…)
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
     PlaylistEditor.vue  строки слайдов, шаблон, гашение, «Когда», добавление (фото/видео, новость, колода)
-    NewsEditor.vue окно новости с живым превью; DeckEditor.vue — раздел «Колоды»
+    NewsEditor.vue окно новости с живым превью; CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
   components/
@@ -149,10 +150,11 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
     { id, type: 'changes',  on, duration, skipEmpty },
     { id, type: 'image',    on, media, fit: 'cover'|'contain', duration },
     { id, type: 'video',    on, media, fit, sound },            // до конца
+    { id, type: 'countdown', on, title ≤60, date: 'ГГГГ-ММ-ДД' /* обязательна, иначе сервер выбросит */, time: 'ЧЧ:ММ'|'', note ≤120, theme, duration },
     { id, type: 'news',     on, label, title, text, date, media?, fit, theme, anim /* none|zoom|drift|parallax|rise, нет → none */, duration },
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
   ] }
-// у image/video/news/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days }
+// у image/video/news/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days }
 ```
 id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
 from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
@@ -218,5 +220,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.9 — предупреждение «текст не помещается»: проп `measure` + emit `overflow` у NewsSlide/DeckCard (только превью редактора; допуск 0,4 строки — у заголовка край букв выше строки), плашка `.a-warn` в NewsEditor/DeckEditor, ⚠ у карточки в списке (запоминается по просмотренным).
 
 - v0.8.10 — бегущая строка `playlist.ticker` (display/Ticker.vue: два куска на -50%, скорость px/с от высоты экрана; полоса в PlaylistEditor). Табло перекрыто снизу на ~40 px — допустимо. v0.8.11: у каждого объявления в редакторе метка «показывается / уже не показывается», подсказка про «без даты» только если такие есть.
+
+- v0.8.12 — слайд «Обратный отсчёт» (`countdown`): CountdownSlide/CountdownEditor, `countdownState` в rules.js; без времени идёт весь день события, потом пропускается в `playable()`, в редакторе метка «событие прошло».
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

@@ -14,7 +14,7 @@ const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
 const NEWS_ANIMS = ['none', 'zoom', 'drift', 'parallax', 'rise'] // дублирует NEWS_ANIMS в src/playlist.js
-const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'deck']
+const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'countdown', 'deck']
 // шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
@@ -86,6 +86,15 @@ function cleanItem(x) {
     it.fit = x.fit === 'contain' ? 'contain' : 'cover'
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
+    it.duration = secs(x.duration, 15)
+  } else if (x.type === 'countdown') {
+    // обратный отсчёт: без даты слайд бессмыслен — выбрасываем
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date || '')) return null
+    it.title = str(x.title, 60)
+    it.date = x.date
+    it.time = /^([01]\d|2[0-3]):[0-5]\d$/.test(x.time || '') ? x.time : ''
+    it.note = str(x.note, 120)
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.duration = secs(x.duration, 15)
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
