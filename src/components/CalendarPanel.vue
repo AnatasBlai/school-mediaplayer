@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import BellWidget from './BellWidget.vue'
+import { vFit } from '../fit.js'
 
 const props = defineProps({
   today: Date, // текущая дата (обновляется каждую секунду)
@@ -72,7 +73,7 @@ function shift(n) {
 
 <template>
   <aside class="panel" :class="{ static: !interactive }">
-    <div class="day-name">{{ dayName }}</div>
+    <div v-fit="30" class="day-name">{{ dayName }}</div>
     <div class="date-line">
       <span>{{ dateText }}</span>
       <span class="clock">{{ clock }}</span>
@@ -134,6 +135,7 @@ function shift(n) {
   font-weight: 900;
   font-size: 46px;
   line-height: 1.05;
+  white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.01em;
 }

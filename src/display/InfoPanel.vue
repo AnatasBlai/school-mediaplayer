@@ -6,6 +6,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { state, maxLessonOfDay } from '../store.js'
 import { bellsForDay, bellStatus, plural } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
+import { vFit } from '../fit.js'
 
 const props = defineProps({ inStage: Boolean })
 
@@ -61,7 +62,7 @@ onBeforeUnmount(() => {
   <aside ref="root" class="info-panel" :class="{ 'in-stage': inStage }">
     <div class="canvas" :style="{ width: W + 'px', height: H + 'px', transform: `scale(${scale})` }">
       <div class="card">
-        <div class="day-name">{{ dayName }}</div>
+        <div v-fit="30" class="day-name">{{ dayName }}</div>
         <div class="date">{{ dateText }}</div>
         <div class="clock">{{ clock }}</div>
 
@@ -128,6 +129,7 @@ onBeforeUnmount(() => {
   font-weight: 900;
   font-size: 46px;
   line-height: 1.05;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 .date {
