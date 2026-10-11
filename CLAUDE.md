@@ -108,7 +108,7 @@ src/
   display/         ЭКРАН
     Player.vue     движок: плейлист по кругу; слоты active / leaving (~1 с под новым) / next (невидим, грузится);
                    schedule+changes — одно табло (ключ 'board'); неподходящие слайды пропускаются; нет ни одного —
-                   FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens. now — раз в 10 с
+                   FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens (slide.urgent). Срочный режим (`urgentItem`): `following()` всегда отдаёт этот слайд без on/«Когда», `blanked` не действует, смена режима → `advance()`. now — раз в 10 с
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
     CountdownSlide.vue  обратный отсчёт (число + слово через plural; < суток — «Уже сегодня!» / «Осталось 5 ч 20 мин»); состояние — countdownState в rules.js
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
@@ -143,7 +143,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
 
 **playlist.json** — PUT целиком из редактора; при удалении файла правит сервер:
 ```js
-{ version: 1, updatedAt, layout: 'full'|'panel', blank: { on, periods: [{ timeFrom, timeTo, days }] },
+{ version: 1, updatedAt, layout: 'full'|'panel', urgent: { on, id } /* срочный режим: id слайда из items, нет такого — off; cleanUrgent */, blank: { on, periods: [{ timeFrom, timeTo, days }] },
   ticker: { on, speed: 'slow'|'normal', items: [{ text ≤200, until: 'ГГГГ-ММ-ДД'|'' }] },   // ≤10; cleanTicker; rules.js → tickerTexts
   items: [                                   // порядок = порядок показа
     { id, type: 'schedule', on, duration /* с на параллель */, grades: [] /* [] — все */ },
@@ -222,5 +222,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.10 — бегущая строка `playlist.ticker` (display/Ticker.vue: два куска на -50%, скорость px/с от высоты экрана; полоса в PlaylistEditor). Табло перекрыто снизу на ~40 px — допустимо. v0.8.11: у каждого объявления в редакторе метка «показывается / уже не показывается», подсказка про «без даты» только если такие есть.
 
 - v0.8.12 — слайд «Обратный отсчёт» (`countdown`): CountdownSlide/CountdownEditor, `countdownState` в rules.js; без времени идёт весь день события, потом пропускается в `playable()`, в редакторе метка «событие прошло».
+- v0.8.13 — срочный режим `playlist.urgent`: кнопка ⚠ в строке слайда, красная плашка в «Плейлисте» и шапке, «Срочный режим» в «Сейчас на экране»; слайд удалён → режим сам выключается (клиент и `cleanUrgent` на сервере).
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

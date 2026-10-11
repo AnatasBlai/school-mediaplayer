@@ -6,7 +6,7 @@ import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaLibrary from './MediaLibrary.vue'
 import PlaylistEditor from './PlaylistEditor.vue'
 import DeckEditor from './DeckEditor.vue'
-import { startPlaylist } from '../playlist.js'
+import { playlist, startPlaylist } from '../playlist.js'
 import { startDecks } from '../decks.js'
 import './ui.css'
 
@@ -63,6 +63,7 @@ const status = computed(() => {
       <div class="hint">
         <template v-if="section === 'schedule'">Клик — выделить ячейку, второй клик или ввод — редактировать, Enter — сохранить</template>
       </div>
+      <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
     </header>
@@ -135,6 +136,14 @@ const status = computed(() => {
   white-space: nowrap;
   font-weight: 700;
   color: #c9ccd3;
+}
+.urgent {
+  white-space: nowrap;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: #b3261e;
+  color: #fff;
+  font-weight: 800;
 }
 .status.ok {
   color: #7fd18b;

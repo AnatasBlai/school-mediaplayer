@@ -139,6 +139,16 @@ function copySlide(i) {
   if (copy.type === 'news') newsEdit.value = playlist.items[i + 1]
   if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
 }
+// срочный режим: на всех экранах только один слайд, пока не отключат
+const urgentItem = computed(() => (playlist.urgent.on ? items.value.find((x) => x.id === playlist.urgent.id) : null))
+function toggleUrgent(it) {
+  if (urgentItem.value === it) return stopUrgent()
+  if (!confirm(`Показывать на всех экранах только «${slideTitle(it)}», пока не отключите?`)) return
+  playlist.urgent = { on: true, id: it.id }
+}
+function stopUrgent() {
+  playlist.urgent = { on: false, id: '' }
+}
 function moveBy(i, d) {
   const j = i + d
   if (j < 0 || j >= playlist.items.length) return
@@ -262,6 +272,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </div>
 
+    <div v-if="urgentItem" class="urgent-bar">
+      <span>⚠ Срочный режим: на всех экранах «{{ slideTitle(urgentItem) }}»</span>
+      <button class="btn" @click="stopUrgent">Отключить</button>
+    </div>
+
     <NowOnScreen />
 
     <div class="layout-bar">
@@ -360,6 +375,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           off: !it.on,
           waiting: it.on && !ruleOk(it),
           live: onScreenIds.has(it.id),
+          urgent: urgentItem === it,
           over: dragOver === i && dragFrom !== i,
           dragging: dragFrom === i,
           missing: it.media && !fileOf(it),
@@ -484,6 +500,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div class="acts">
           <button title="Выше" :disabled="i === 0" @click="moveBy(i, -1)">↑</button>
           <button title="Ниже" :disabled="i === items.length - 1" @click="moveBy(i, 1)">↓</button>
+          <button
+            class="urg"
+            :class="{ on: urgentItem === it }"
+            title="Показывать только этот слайд на всех экранах"
+            @click="toggleUrgent(it)"
+          >
+            ⚠
+          </button>
           <button title="Копировать слайд" @click="copySlide(i)">⧉</button>
           <button class="del" title="Убрать из плейлиста (файл останется в медиатеке)" @click="remove(i)">✕</button>
         </div>
@@ -822,7 +846,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .row {
   display: grid;
-  grid-template-columns: 22px 26px 128px minmax(0, 1fr) 150px 52px 144px;
+  grid-template-columns: 22px 26px 128px minmax(0, 1fr) 150px 52px 180px;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
@@ -839,6 +863,28 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .row.live {
   border-color: #2f7a43;
+}
+.row.urgent {
+  border-color: #d9382a;
+  background: #3a2326;
+}
+.urgent-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #b3261e;
+  color: #fff;
+  font-weight: 800;
+}
+.urgent-bar .btn {
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.3);
+}
+.acts .urg.on {
+  background: #d9382a;
+  color: #fff;
 }
 .tag {
   margin-left: 8px;

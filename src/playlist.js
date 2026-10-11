@@ -8,7 +8,8 @@ import { plural } from './bells.js'
 
 // ticker — бегущая строка: { on, speed: 'slow'|'normal', items: [{ text, until: 'ГГГГ-ММ-ДД'|'' }] }
 // blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
-export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, ticker: { on: false, speed: 'normal', items: [] }, items: [] })
+// urgent — срочный режим: { on, id } — экраны показывают только слайд с этим id (Player.vue)
+export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, urgent: { on: false, id: '' }, ticker: { on: false, speed: 'normal', items: [] }, items: [] })
 export const playlistLoaded = ref(false)
 export const mediaLoaded = ref(false)
 export const media = ref([]) // элементы медиатеки (data/media.json)
@@ -87,13 +88,14 @@ export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id
 
 let applying = false
 let lastProbe = ''
-const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.ticker, playlist.items])
+const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.urgent, playlist.ticker, playlist.items])
 
 function apply(d) {
   applying = true
   playlist.updatedAt = Number(d.updatedAt) || 0
   playlist.layout = d.layout === 'panel' ? 'panel' : 'full'
   playlist.blank = { on: !!d.blank?.on, periods: Array.isArray(d.blank?.periods) ? d.blank.periods : [] }
+  playlist.urgent = { on: !!d.urgent?.on, id: String(d.urgent?.id || '') }
   playlist.ticker = {
     on: !!d.ticker?.on,
     speed: d.ticker?.speed === 'slow' ? 'slow' : 'normal',
@@ -147,6 +149,8 @@ watch(
   playlist,
   () => {
     if (applying || !playlistLoaded.value) return
+    // слайд срочного режима убрали из списка — режим выключается (сервер делает то же)
+    if (playlist.urgent.on && !playlist.items.some((it) => it.id === playlist.urgent.id)) playlist.urgent = { on: false, id: '' }
     const probe = probeOf()
     if (probe === lastProbe) return
     lastProbe = probe

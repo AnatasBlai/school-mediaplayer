@@ -1,5 +1,5 @@
 // Плейлист экрана: порядок слайдов, длительность, вкл/выкл — data/playlist.json.
-//   GET /api/playlist  → { version, updatedAt, layout, blank, ticker, items }; если файла нет — плейлист по умолчанию
+//   GET /api/playlist  → { version, updatedAt, layout, blank, ticker, urgent, items }; если файла нет — плейлист по умолчанию
 //                        из старых настроек автолистания (schedule.json), на диск он попадает при первом PUT
 //   PUT /api/playlist  — весь плейлист целиком (как /api/data), сервер проверяет и чистит поля
 import fs from 'node:fs'
@@ -56,6 +56,12 @@ function cleanTicker(t) {
     .filter((i) => i.text)
     .slice(0, 10)
   return { on: !!t?.on, speed: t?.speed === 'slow' ? 'slow' : 'normal', items }
+}
+
+/** Срочный режим: { on, id } — id слайда из items; слайда нет в списке — режим выключен. */
+function cleanUrgent(u, items) {
+  const id = String(u?.id ?? '')
+  return u?.on && items.some((it) => it.id === id) ? { on: true, id } : { on: false, id: '' }
 }
 
 const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('hex')
@@ -129,6 +135,7 @@ function defaultPlaylist() {
     layout: 'full',
     blank: cleanBlank(null),
     ticker: cleanTicker(null),
+    urgent: cleanUrgent(null, []),
     items: [
       cleanItem({ id: 'schedule0', type: 'schedule', duration: s.interval }),
       cleanItem({
@@ -145,13 +152,15 @@ function defaultPlaylist() {
 export function readPlaylist() {
   try {
     const d = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+    const items = (d.items || []).map(cleanItem).filter(Boolean)
     return {
       version: 1,
       updatedAt: Number(d.updatedAt) || 0,
       layout: cleanLayout(d.layout),
       blank: cleanBlank(d.blank),
       ticker: cleanTicker(d.ticker),
-      items: (d.items || []).map(cleanItem).filter(Boolean),
+      urgent: cleanUrgent(d.urgent, items),
+      items,
     }
   } catch {
     return defaultPlaylist()
@@ -178,7 +187,7 @@ export function removeMediaFromPlaylist(mediaId) {
     return true
   })
   const removed = p.items.length - items.length
-  if (touched) writePlaylist({ ...p, updatedAt: Date.now(), items })
+  if (touched) writePlaylist({ ...p, updatedAt: Date.now(), urgent: cleanUrgent(p.urgent, items), items })
   return removed
 }
 
@@ -207,13 +216,15 @@ export function handlePlaylist(req, res) {
       return json(res, 400, { ok: false, error: 'Неверный JSON' })
     }
     if (!Array.isArray(d.items)) return json(res, 400, { ok: false, error: 'Нет списка слайдов' })
+    const items = d.items.map(cleanItem).filter(Boolean)
     const p = {
       version: 1,
       updatedAt: Number(d.updatedAt) || Date.now(),
       layout: cleanLayout(d.layout),
       blank: cleanBlank(d.blank),
       ticker: cleanTicker(d.ticker),
-      items: d.items.map(cleanItem).filter(Boolean),
+      urgent: cleanUrgent(d.urgent, items),
+      items,
     }
     writePlaylist(p)
     json(res, 200, { ok: true, updatedAt: p.updatedAt })

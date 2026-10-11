@@ -49,8 +49,12 @@ function playable(it) {
 // плейлист пуст или всё выключено — экран не должен быть чёрным, показываем расписание
 const FALLBACK = { id: 'fallback', type: 'schedule', on: true, duration: 15, grades: [] }
 
+// срочный режим: показывается только этот слайд, без проверки on/«Когда» и гашения
+const urgentItem = computed(() => (playlist.urgent.on ? playlist.items.find((x) => x.id === playlist.urgent.id) : null))
+
 /** Следующий слайд после слайда с данным id, по кругу. Если id нет в плейлисте — с начала. */
 function following(id) {
+  if (urgentItem.value) return urgentItem.value
   const items = playlist.items
   const n = items.length
   const start = items.findIndex((x) => x.id === id)
@@ -88,8 +92,9 @@ const slots = computed(() => {
 })
 
 // гашение экрана по расписанию: слайды убираются совсем (видео не играет), остаётся чёрный экран
-const blanked = computed(() => isBlanked(playlist.blank, now.value))
-watch(blanked, (b) => {
+const blanked = computed(() => !urgentItem.value && isBlanked(playlist.blank, now.value))
+// смена срочного режима применяется сразу, а не после конца текущего слайда
+watch([blanked, () => urgentItem.value?.id], ([b]) => {
   if (b) {
     cur.value = leaving.value = null
   } else if (ready.value) advance()
@@ -142,7 +147,7 @@ function report() {
   const c = cur.value
   if (blanked.value) return send({ id: 'blank', type: 'blank', seq: 0, tab: '', fallback: false })
   if (!c) return
-  send({ id: c.item.id, type: c.item.type, seq: c.seq, tab: isBoard(c.item) ? boardTab.value : '', fallback: c.item.id === FALLBACK.id })
+  send({ id: c.item.id, type: c.item.type, seq: c.seq, tab: isBoard(c.item) ? boardTab.value : '', fallback: c.item.id === FALLBACK.id, urgent: !!urgentItem.value })
 }
 function send(slide) {
   fetch('/api/screens', {

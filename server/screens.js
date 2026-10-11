@@ -1,6 +1,6 @@
 // Что сейчас показывают экраны. Хранится только в памяти: после перезапуска сервера экраны перезагружаются
 // и сразу сообщают о себе заново.
-//   POST /api/screens  { id, name, slide: { id, type, seq, tab, fallback }, w, h } — экран при смене слайда и раз в 30 с
+//   POST /api/screens  { id, name, slide: { id, type, seq, tab, fallback, urgent }, w, h } — экран при смене слайда и раз в 30 с
 //                      { id, gone: true } — страницу экрана закрыли (sendBeacon), сразу помечаем «нет связи»
 //   GET  /api/screens  → { now, items: [{ id, name, ip, slide, since, seen, w, h }] } — время по часам сервера
 import { broadcast } from './events.js'
@@ -8,7 +8,7 @@ import { broadcast } from './events.js'
 const screens = new Map()
 const FORGET = 24 * 3600 * 1000 // экран, молчащий сутки, убираем из списка
 
-const sameSlide = (a, b) => a && b && a.id === b.id && a.seq === b.seq && a.tab === b.tab
+const sameSlide = (a, b) => a && b && a.id === b.id && a.seq === b.seq && a.tab === b.tab && a.urgent === b.urgent
 const str = (v, max) => String(v ?? '').slice(0, max)
 
 function json(res, code, data) {
@@ -59,6 +59,7 @@ export function handleScreens(req, res) {
       seq: Number(s.seq) || 0,
       tab: str(s.tab, 20),
       fallback: !!s.fallback,
+      urgent: !!s.urgent,
     }
     const prev = screens.get(id)
     const now = Date.now()

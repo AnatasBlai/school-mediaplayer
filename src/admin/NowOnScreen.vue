@@ -38,10 +38,12 @@ function view(s) {
   else if (sl.fallback) title = 'Расписание — в плейлисте сейчас нечего показать'
   else if (item) title = slideTitle(item)
   else title = 'Слайд уже убран из плейлиста'
+  const urgent = !!sl.urgent
   const tab = board && sl.tab ? (sl.tab === 'changes' ? 'вкладка «Изменения»' : `сейчас ${sl.tab}-е классы`) : ''
   return {
     title,
     tab,
+    urgent,
     thumb: file ? thumbUrl(file) : '',
     label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'countdown' ? '⏳' : '',
     cls: sl.type,
@@ -72,6 +74,7 @@ function view(s) {
             {{ view(s).title }}
           </div>
           <div class="sub">
+            <template v-if="view(s).urgent"><b class="urg">Срочный режим</b> · </template>
             <template v-if="view(s).tab">{{ view(s).tab }} · </template>идёт {{ fmtAgo(serverNow() - s.since) }}
           </div>
         </template>
@@ -188,6 +191,9 @@ function view(s) {
   color: #8b909a;
   font-size: 12px;
   font-weight: 600;
+}
+.urg {
+  color: #ff8a7a;
 }
 .sub.bad {
   color: #ff8a7a;
