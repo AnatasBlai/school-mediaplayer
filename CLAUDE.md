@@ -1,417 +1,204 @@
-# Табло расписания уроков
+# Школьное табло: расписание и медиаплеер
 
-Сайт-табло с расписанием школы (МБОУ Башкирский лицей №1, Учалы).
-Показывается со стационарного ПК: браузер на весь экран без рамок открывает `/` на втором мониторе (HDMI).
-Плеер SpinetiX HMP400 больше не используется, под его ограничения подстраиваться не нужно.
-Владелец — учитель информатики. Общаемся по-русски, комментарии в коде тоже пишем по-русски.
+Сайт-табло МБОУ Башкирский лицей №1 (Учалы). Стационарный ПК раздаёт сайт; браузер в киоск-режиме показывает `/`
+на телевизорах (HDMI), редактор `/admin` открывают с любого компьютера школьной сети.
+Владелец — учитель информатики. **Общаемся по-русски, комментарии в коде и сообщения коммитов — по-русски.**
+Этот файл — правила для исполнителя. Держи его **не длиннее 400 строк**: дописывая, сжимай старое. История — `docs/history.md`.
+
+## Главные правила
+
+1. Делай ровно то, что просят в задаче. Не переделывай соседний код «заодно», не меняй оформление без просьбы.
+2. **Рабочие данные школы** (`data/`, `media/`) не перезаписывать, не «чистить», не удалять. Тесты — на копии (см. «Проверка»).
+3. Каждая правка заканчивается полным циклом из раздела «Порядок работы» — без пропусков.
+4. Если в задаче что-то неясно или противоречит этому файлу — спроси владельца, а не угадывай.
+5. Новое поле данных → сразу в три места: клиент (создание/нормализация), **сервер (`clean…` в server/*.js — иначе
+   сервер молча выбросит поле)**, раздел «Данные» этого файла.
+6. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
 
 ## Стек и запуск
 
-- Vue 3 (`<script setup>`, Composition API) + Vite 6, без TypeScript и без роутера/Pinia.
-- Шрифт Montserrat (600/800/900, кириллица+латиница) подключён локально через `@fontsource`. Интернет на табло не нужен.
-- Windows, запуск через bat-файлы:
-  - `dev.bat` → `npm run dev` (Vite, порт **5173**, `--host`, доступно из локальной сети);
-  - `start.bat` → `node server.js` (раздаёт `dist/`, порт **8080**, без зависимостей). Экран открывает `http://<сервер>:8080/`,
-    редактор — `http://<сервер>:8080/admin`;
-  - `build.bat` → `npm run build`. **После правок кода нужно пересобрать `dist/`**, иначе `start.bat` покажет старую версию.
-  - `pack.bat` → сборка + `node tools/pack.mjs` (release/tablo-<версия>.zip: dist, server, api.js, server.js, src/deckText.js,
-    bat/ps1, kiosk-settings.txt, README, УСТАНОВКА.txt и data/ — расписание как есть, media.json пустой, decks.json
-    без картинок, плейлист заново: schedule + changes + включённые новости без фото + все колоды, layout/blank из
-    текущего) и `--update` (…-update.zip без data/ и kiosk-settings.txt, ОБНОВЛЕНИЕ.txt). Архив — .NET ZipFile через
-    PowerShell с записями «/» (tar.exe не ставит UTF-8-флаг — русские имена ломаются). `release/` в .gitignore.
-  - Школьный ПК (этап 7): `kiosk.bat` / `kiosk-stop.bat` (tools/kiosk.ps1, настройки `kiosk-settings.txt`),
-    `autostart-install.bat` / `autostart-remove.bat` (tools/autostart.ps1, задания планировщика «Tablo - server»
-    от SYSTEM при включении ПК и «Tablo - kiosk» при входе пользователя). На ПК школы: Яндекс.Браузер
-    (`C:\Program Files (x86)\Yandex\YandexBrowser\Application\browser.exe`), монитор 1920×1080, телевизоры 1280×720,
-    автовхода в Windows нет, ПК работает круглосуточно.
-- Проверка: `npm run build` должен проходить без ошибок. Автотестов нет — проверяем в браузере (см. ниже).
-- Git: репозиторий локальный, ветка `main`. В git не попадают `node_modules/`, `dist/`, `data/` (рабочие данные школы),
-  `media/` и `*.zip`. Бэкап данных — отдельная задача (этап 7), не через git.
+- Vue 3 (`<script setup>`, Composition API) + Vite 6. Без TypeScript, роутера, Pinia. Сервер — Node без зависимостей.
+- Шрифт Montserrat 600/800/900 локально (`@fontsource`). Интернет табло не нужен.
+- Windows, bat-файлы (UTF-8, `chcp 65001`; CRLF ставит git по .gitattributes):
+  - `start.bat` → `node server.js` — боевой сервер, порт **8080**: `/` экран, `/admin` редактор;
+  - `dev.bat` → Vite, порт 5173; `build.bat` → `npm run build` (**после правок кода пересобрать `dist/`**);
+  - `pack.bat` → сборка + `tools/pack.mjs`: `release/tablo-<версия>.zip` (установка: dist, server, bat, ps1, данные без
+    фото/видео) и `…-update.zip` (обновление: без `data/` и `kiosk-settings.txt`). Архив — .NET ZipFile через PowerShell;
+  - `kiosk.bat` / `kiosk-stop.bat` (tools/kiosk.ps1, настройки `kiosk-settings.txt`) — Яндекс.Браузер в киоск-режиме;
+  - `autostart-install.bat` / `autostart-remove.bat` (tools/autostart.ps1) — задания планировщика «Tablo - server»
+    (SYSTEM, при включении ПК) и «Tablo - kiosk» (при входе пользователя).
+- Git: локальный, ветка `main`. Не в git: `node_modules/ dist/ data/ media/ release/ *.zip`.
 
-## Как работаем
+## Порядок работы (каждая правка)
 
-- Владелец пишет «делай этап N» — делаем этап целиком: код → `npm run build` → проверка в браузере →
-  обновить CLAUDE.md (архитектура, данные, отметка в плане) и README (если поменялось для пользователя) →
-  коммит и тег. Коммитить и ставить теги владелец разрешил сам, после каждого готового этапа.
-- **Версии**: тег `v0.<этап>.<правка>`. Этап готов → `v0.N.0`; исправления после проверки владельцем → `v0.N.1`, `v0.N.2`…
-  Версию дублируем в `package.json`. Сообщение коммита — по-русски, что сделано: «Медиатека: … (этап 2)».
-- **`fs.cpSync` в Node 22/24 на Windows падает молча** (код 0xC0000409) на путях с кириллицей — путь проекта
-  `C:\Users\Самат Булатович\…`. Копировать папки своей рекурсией (readdirSync + copyFileSync), как в tools/pack.mjs.
-- **Не запускать** на ПК разработки `autostart-install.bat`/`kiosk.bat` без просьбы: первый создаёт задания планировщика,
-  второй разворачивает браузер на весь второй монитор. Проверять их `-DryRun` (`tools\kiosk.ps1 -DryRun`,
-  `tools\autostart.ps1 -DryRun`) и разбором `[Parser]::ParseFile`. `.ps1` хранятся в UTF-8 **с BOM** (иначе Windows
-  PowerShell 5.1 ломает кириллицу); у `.bat` git сам ставит CRLF (.gitattributes), в них `chcp 65001`.
-- Перед перезапуском боевого сервера на 8080 найти процесс по порту
-  (`Get-NetTCPConnection -LocalPort 8080 -State Listen` → `Stop-Process`) и запустить `node server.js` в фоне.
+1. Прочитай задачу и нужные файлы. Найди все места, где используется то, что меняешь (grep), — включая сервер.
+2. Сделай правку. Стиль — как в соседнем коде: те же имена, плотность комментариев, русские комментарии.
+3. `npm run build` — без ошибок.
+4. Проверка в браузере (Playwright) на **изолированной копии сервера**: скриншоты экрана и редактора, журнал ошибок
+   консоли (404 на `/background.jpg` — норма). Посмотри скриншоты сам, а не только счётчики.
+5. Обнови этот файл (карта файлов, данные, подводные камни — кратко) и `README.md`, если поменялось для пользователя.
+6. Перезапусти боевой сервер 8080: `Get-NetTCPConnection -LocalPort 8080 -State Listen` → `Stop-Process`,
+   затем `node server.js` в фоне. Экраны перезагрузятся сами (сменился `boot` в SSE `hello`).
+7. Версия: поднять в `package.json`, коммит по-русски («Табло: мигающее двоеточие в часах (v0.8.3)»), тег.
+   Коммитить и ставить теги владелец разрешил. **Версия**: `v0.<этап>.<правка>`; текущий этап — 8 (доработки),
+   каждая задача — следующая правка: посмотри последний тег (`git tag --sort=-v:refname | head -1`) и прибавь 1.
+8. Коротко отчитайся владельцу: что сделано, как проверено, что осталось непроверенным.
 
-## Проверка в браузере (Playwright)
+## Проверка в браузере
 
-- `playwright` стоит в devDependencies, Chromium — `npx playwright install chromium` (уже установлен на ПК разработки).
-- Быстрый скриншот: `node tools/screenshot.mjs admin#media out.png` (путь без начального «/», `""` — экран).
-  Скриншоты и одноразовые скрипты кладём в scratchpad, не в проект. Одноразовый скрипт вне проекта подключает
-  playwright через `createRequire('<проект>/package.json')`.
-- Подводные камни:
-  - Chromium из Playwright **не играет H.264/MP4** (нет проприетарных кодеков). Видео для тестов — WebM:
-    его можно записать прямо в браузере через canvas + MediaRecorder. В настоящем Chrome/Edge на школьном ПК MP4 играет.
-  - `page.keyboard.type('кириллица')` не шлёт keydown — редактор ячеек его не видит. В тестах печатать латиницей.
-  - 404 на `/background.jpg` — норма (необязательный фон).
-- Тесты идут по **рабочим данным**. Перед правкой расписания — копия `data/schedule.json` в scratchpad, после — вернуть
-  как было и сверить. Свои тестовые файлы в медиатеке удалять (фильтр по `addedAt` ≥ времени старта теста),
-  чужие не трогать. Плейлист: копию `data/playlist.json` вернуть после теста; если файла до теста не было — удалить его.
-- **Изолированная копия сервера** (так тестировали этап 6): скопировать в scratchpad `api.js server.js package.json
-  server/ dist/ data/ src/deckText.js` и картинки из `media/` (без видео), запустить там `PORT=8090 node server.js`.
-  Тогда PUT-ы не трогают рабочие данные и не видны настоящим экранам (в «Сейчас на экране» бывают живые экраны школы).
-  Можно и подменять ответы API прямо в браузере: `page.route('**/api/data', r => r.fulfill({ json }))`.
-- Экраны в Playwright: каждый новый браузер — новый `screen-id`; чтобы проверить переоткрытие того же экрана,
-  открывать страницы в одном `browser.newContext()`. Закрытие — `page.close({ runBeforeUnload: true })`.
-- Экран удобно проверять, опрашивая раз в 250 мс `.slide.active` (табло: `.tab.active .lbl`, видео: currentTime/muted),
-  — получается журнал смены слайдов.
+- Playwright в devDependencies, Chromium установлен. Скриншот: `node tools/screenshot.mjs admin#media out.png`
+  (путь без начального «/», `""` — экран; 3–5 аргументы: ширина, высота, адрес сервера).
+- Одноразовые скрипты и скриншоты — в scratchpad, не в проект. Скрипт вне проекта подключает playwright так:
+  `createRequire('<путь проекта>/package.json')('playwright')`.
+- **Изолированная копия сервера** (обязательно для всего, что пишет данные): скопировать в scratchpad `api.js server.js
+  package.json server/ dist/ data/ src/deckText.js` и картинки из `media/` (без видео), запустить там
+  `PORT=8090 node server.js`. Так тест не трогает рабочие данные и не виден живым экранам школы.
+  Или подменять ответы API в браузере: `page.route('**/api/playlist', r => r.fulfill({ json }))`.
+  POST `/api/screens` в тестах тоже подменяй — иначе тестовый «экран» появится в «Сейчас на экране».
+- Экран удобно проверять опросом раз в 250 мс `.slide.active` — получается журнал смены слайдов.
+- Проверяй и «неудобные» случаи: выходной/день без уроков, пустые изменения, длинный текст, экран 1280×720
+  (телевизоры школы), шаблон «с панелью справа».
+
+## Подводные камни (уже наступали)
+
+- Chromium из Playwright **не играет MP4/H.264**. Видео для тестов — WebM (canvas + MediaRecorder в браузере).
+- `page.keyboard.type('кириллица')` не шлёт keydown — редактор ячеек его не видит. Печатать латиницей, `fill()` работает.
+- **`fs.cpSync` в Node 22/24 на Windows молча падает** (0xC0000409) на путях с кириллицей — а путь проекта
+  `C:\Users\Самат Булатович\…`. Копировать папки своей рекурсией (`readdirSync` + `copyFileSync`), как в tools/pack.mjs.
+- `tar.exe` пишет zip без флага UTF-8 — русские имена файлов ломаются. Zip делать .NET ZipFile (см. tools/pack.mjs).
+- `.ps1` хранить в **UTF-8 с BOM** (Windows PowerShell 5.1 иначе ломает кириллицу). Python на Windows пишет CRLF —
+  после правок скриптом проверь окончания строк (в репозитории LF, кроме .bat).
+- **Не запускать** на ПК разработки `kiosk.bat` (развернёт браузер на второй монитор) и `autostart-install.bat`
+  (создаст задания планировщика). Проверять: `tools\kiosk.ps1 -DryRun`, `tools\autostart.ps1 -DryRun`, разбор
+  `[System.Management.Automation.Language.Parser]::ParseFile`.
+- Списки допустимых тем и типов слайдов **продублированы на сервере** (`THEMES`/`TYPES` в server/playlist.js и
+  server/decks.js). Добавил на клиенте — добавь и там.
+- `ScheduleBoard` рисует фоны **всех** тем из `THEMES` стопкой. Не добавляй туда темы, не нужные табло, — слабый ПК.
 
 ## Архитектура
 
 ```
-api.js            общий для Vite-плагина и server.js: роутер API + GET/PUT /api/data → data/schedule.json
-                  (атомарная запись через .tmp). Остальное делегирует в server/
+server.js          раздаёт dist/ + API + /media/*; пути без расширения (/, /admin) → index.html; запускает расписание копий
+api.js             роутер API (общий для server.js и Vite-плагина) + GET/PUT /api/data → data/schedule.json (атомарно .tmp)
 server/
-  events.js       SSE /api/events: hello { boot } при подключении; broadcast('data', { updatedAt }) после PUT
-                  расписания, broadcast('media') после любого изменения медиатеки,
-                  broadcast('playlist', { updatedAt }) после записи плейлиста, 'decks' — колод; ping раз в 25 с
-  decks.js        GET/PUT /api/decks → data/decks.json (колоды карточек); нет файла — STARTER_DECKS из starterDecks.js
-                  (строки в формате deckText, на диск — при первом PUT). POST /api/decks/<id>/take → { n } — общий
-                  счётчик показов колоды (data/deck-state.json, все экраны идут по кругу дальше). broadcast('decks').
-                  removeMediaFromDecks(id) — из media.js при DELETE файла (у карточки пропадает только картинка)
-  starterDecks.js стартовый набор: «Слово дня», «Знаешь ли ты?», «Викторина», «Загадки», «Башкортостан»
-  backup.js       резервные копии: настройки data/backup.json { dir, period off|day|week|month, lastAt, last }.
-                  В папке копии: data/<ГГГГ-ММ-ДД_ЧЧ-ММ-СС>/ (json из data/ кроме backup.json, KEEP = 30), media/ — зеркало
-                  (докопируются новые/изменившиеся по размеру, удалённые не стираются), README.txt.
-                  API: GET /api/backup (status + info о папке), GET /api/backup/drives, POST /check { dir },
-                  PUT { dir, period, move } (move — перенос data/ media/ README из старой папки: rename, иначе copy+rm),
-                  POST /run, POST /restore { name } (сначала снимок «_before-restore», у schedule/playlist/decks ставит
-                  свежий updatedAt, докопирует недостающие файлы media/ из зеркала, broadcast data/playlist/decks/media).
-                  Одна работа за раз (job { kind, done, total }), SSE 'backup'. startBackupScheduler() — из server.js
-                  (не в Vite): проверка раз в 10 мин, после ошибки повтор не чаще раза в час. Путь — только полный,
-                  не внутри data/ или media/. При автозапуске сервер работает от SYSTEM: сетевые папки могут быть недоступны
-  playlist.js     GET/PUT /api/playlist → data/playlist.json; cleanItem() чистит каждый слайд; нет файла — плейлист
-                  по умолчанию из старых settings.interval/changes* (на диск попадает при первом PUT);
-                  removeMediaFromPlaylist(id) — вызывается из media.js при DELETE файла (слайд фото/видео удаляется,
-                  у новости пропадает только фото). cleanWhen() — правила показа; cleanBlank() — гашение экрана; cleanLayout() — общий
-                  шаблон layout ('full'|'panel'), у фото/видео layout сохраняется, только если задан
-  screens.js      POST/GET /api/screens — что сейчас показывают экраны. Только в памяти (после перезапуска экраны
-                  перезагружаются и сообщают о себе заново). broadcast('screens') — новый экран, смена слайда/вкладки,
-                  экран закрыт ({ id, gone: true } через sendBeacon) или вернулся. Молчащий сутки — забывается
-  media.js        медиатека: GET/POST /api/media, PUT /api/media/<id>/thumb, PATCH/DELETE /api/media/<id>;
-                  загрузка — сырое тело запроса потоком в media/<id>.<ext>.part → rename (без multipart, лимит 4 ГБ),
-                  .part удаляются при обрыве и при старте; раздача /media/* с Range (206/416), защита от выхода за папку
-                  DELETE отвечает { ok, removedFromPlaylist } — слайды с файлом убираются из плейлиста
-  mime.js         таблица MIME
-server.js         dist/ + API + media; пути без расширения (/, /admin) → index.html; печатает адреса
-vite.config.js    подключает apiPlugin(), игнорирует data/ и media/ в watch
+  events.js        SSE /api/events: hello { boot }; broadcast(data|media|playlist|decks|screens|backup); ping 25 с
+  playlist.js      GET/PUT /api/playlist; cleanItem/cleanWhen/cleanBlank/cleanLayout; TYPES, THEMES;
+                   removeMediaFromPlaylist(id) (фото/видео-слайд удаляется, у новости пропадает только фото)
+  decks.js         GET/PUT /api/decks (нет файла → STARTER_DECKS из starterDecks.js), POST /api/decks/<id>/take → { n }
+                   (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
+  media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
+  backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore; расписание раз в 10 мин
+  screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
-  main.js         «роутер» без библиотек: /admin → admin/AdminApp.vue, иначе DisplayApp.vue (оба — динамический import,
-                  отдельные чанки); экран ставит ui.readonly = true; вызывает startSync()
-  DisplayApp.vue  экран для зрителей: только <Player />
-  deckText.js     формат «вставить списком» (одна строка — карточка, «;» или Tab): parseLine/parseCards/cardsToText,
-                  CARD_TYPES, LETTERS (А Б В Г), newCardId. Чистые функции — их импортирует и сервер (server/decks.js)
-  decks.js        стор колод (как playlist.js: debounce → PUT /api/decks, SSE 'decks'/'hello'), makeDeck/makeCard,
-                  cardSeconds(deck, card), dayNumber() (местный день — режим «одна в день»), takeCard(id) → номер показа
-                  (без связи — свой счётчик). startDecks() — один раз на страницу (Player, AdminApp, редакторы)
-  rules.js        правила показа: ruleState(when, now) → { ok, reason }, rulesText(when), hasRules, DAY_SHORT, EMPTY_WHEN,
-                  isBlanked(blank, now) — гашение экрана (подходит хоть один период; пустой период не считается).
-                  Общий для экрана и редактора; чистые функции, проверять можно прямо в node
-  playlist.js     стор плейлиста (как store.js: debounce 300 мс → PUT, SSE 'playlist'/'media'/'hello') + список медиатеки
-                  (media, mediaById), mediaUrl/thumbUrl, makeSlide(type, mediaId), slideTitle(it), usesOfMedia(id),
-                  LAYOUT_TITLES, hasLayout(it) (фото/видео/новость/колода), layoutOf(it) — шаблон слайда (свой → общий → 'full';
-                  табло всегда 'full'); startPlaylist() —
-                  один раз на страницу (зовут Player и AdminApp). Пишет в общий saveStatus из store.js
-  display/
-    Player.vue    движок показа: идёт по плейлисту по кругу. Слоты active / leaving (под новым ~1 с) / next (невидим,
-                  заранее грузится). Слайды schedule+changes — ОДНО табло с ключом 'board' (между ними без затемнения,
-                  табло само меняет вкладку). Неподходящие слайды (выключен, файла нет, нет букв, пустые изменения
-                  при skipEmpty, правила when не подходят) пропускаются; если подходящих нет — FALLBACK: расписание
-                  всех параллелей. Часы для правил (now) обновляются раз в 10 с. Отчёт POST /api/screens — при смене
-                  слайда/вкладки табло (событие 'tab' от ScheduleBoard) и раз в 30 с; погашен — слайд { id: 'blank',
-                  type: 'blank' }. Гашение (isBlanked по now): cur/leaving = null, все слоты размонтированы, чёрный .blank;
-                  advance() при погашенном ничего не делает, после — заново с начала. id экрана — localStorage
-                  'screen-id', имя — из адреса /?name=Холл
-    MediaSlide.vue  фото (duration с) / видео (до 'ended'; страховка duration+15 с). Ошибка файла → дальше через 2 с.
-                  Звук: если браузер не дал play() со звуком — играет без звука. fit cover|contain; при contain
-                  поля — превью 480 px, растянутое на экран (без filter: blur). Проп layout (из layoutOf):
-                  'full' — на весь экран; 'panel' — медиа в .area слева, справа InfoPanel, под ней затемнённое превью.
-                  Панель рисует каждый слайд сам (не общий слой) — кроссфейд одинаковых панелей незаметен
-    NewsSlide.vue   новость на SlideStage: фото слева (900 px, fit) + стеклянная панель (метка · дата, заголовок
-                  uppercase, текст); без фото — текст на всю сцену. Размер шрифта — по длине текста (pick по ступеням).
-                  active=false — превью в редакторе (без таймера). layout 'panel' — содержимое в right: 440px,
-                  фото уже (640), шрифты ×0.85–0.9, справа <InfoPanel in-stage> на фоне темы
-    DeckSlide.vue   логика слайда «колода»: при монтировании (ещё «следующим») берёт номер показа — takeCard или
-                  dayNumber; карточка = n % cards.length. Фазы: факт — factTime; вопрос qTime → ответ aTime → done.
-                  Таймер — setInterval 250 мс по performance.now()
-    DeckCard.vue    отрисовка карточки (без таймеров): шапка (название колоды, «Выберите ответ/Подумайте!/Ответ»,
-                  секунды, полоска), картинка слева (720 px), варианты 2×2; phase 'a' — верный зелёный ✓,
-                  остальные opacity .3, пояснение; open — блок «Ответ». Используется и в превью DeckEditor
-                  (шаблон превью — как у слайда колоды в плейлисте, иначе общий). layout 'panel' — как у NewsSlide
-    InfoPanel.vue   панель шаблона 'panel' (проп inStage — лежит внутри сцены SlideStage справа, 440×1080 без своего
-                  масштаба: так её рисуют NewsSlide и DeckCard, и она видна в превью редактора): холст 440×1080, масштаб по высоте блока (ширина calc(100vh*440/1080)),
-                  день, дата, часы (свой таймер 1 с), BellWidget, изменения из ch0..ch(changesCols-1)
-                  (до 7 строк, дальше «и ещё N»; нет изменений — блока нет). Свои --accent/--shadow-text
-  admin/
-    AdminApp.vue  редактор: тёмная панель сверху (разделы, статус сохранения/связи, «Открыть экран»), под ней раздел.
-                  Разделы: schedule (ScheduleBoard editable), playlist, decks, media. Текущий раздел — в hash (/admin#media)
-    PlaylistEditor.vue  плейлист: строки слайдов (перетаскивание за ⋮⋮, ↑↓, вкл/выкл, длительность, ✕), настройки по типу
-                  (параллели / пропускать пустые / на весь экран|целиком / со звуком), выбор файлов из медиатеки
-                  (мультивыбор, порядок выбора = порядок добавления), итог «круг ≈» (только слайды, идущие сейчас).
-                  Полоса «Шаблон слайдов» (playlist.layout) и у фото/видео/новости/колоды select «Шаблон: как у всех / …».
-                  «＋ Новость» (окно NewsEditor, «✎ Изменить» в строке), «＋ Колода…» (select), у колоды — выбор колоды
-                  и режим «По очереди / Одна в день», в колонке длительности — средняя длина карточки.
-                  Полоса «Гашение экрана»: переключатель, периоды (с/до, дни), «＋ период», «сейчас погашен/работает».
-                  Кнопка «Когда: …» раскрывает панель правил (даты, время, дни, «Пн–Пт», сброс). Метки
-                  «▶ на экране» (по отчётам экранов) и «сейчас не идёт: причина» (по часам этого компьютера)
-    DeckEditor.vue  раздел «Колоды»: слева список, в середине настройки (имя, тема, факт/вопрос/ответ с) и карточки
-                  (вид, поля, картинка, ↑↓✕), «Вставить списком» с подсказкой и счётчиком, «Скопировать текстом»,
-                  «＋ В плейлист», удаление (убирает и слайды колоды из плейлиста); справа превью DeckCard
-    NewsEditor.vue  окно новости: форма + живое превью NewsSlide; правит слайд плейлиста напрямую.
-                  Пустая новая новость при закрытии удаляется (closeNews в PlaylistEditor)
-    MediaPicker.vue выбор одной картинки из медиатеки (поиск, категория). ThemeSwatches.vue — выбор темы (v-model)
-    ui.css          общие классы новых окон редактора с префиксом a- (a-btn, a-input, a-seg, a-modal…),
-                  подключён в AdminApp — только чанк редактора
-    NowOnScreen.vue  карточки экранов вверху раздела «Плейлист»: что идёт, сколько, на связи ли. Отключённый дубль
-                  (то же имя и IP при живом экране) и экраны без связи > 12 ч скрываются
-    screens.js    стор экранов: GET /api/screens + SSE 'screens' + опрос раз в 20 с; skew — поправка на часы сервера;
-                  isOnline (отчёт свежее 75 с), onScreenIds — id слайдов, идущих сейчас
-    BackupPanel.vue  окно «Резервная копия» (из медиатеки): папка + «Проверить» + кнопки дисков, частота, вопрос
-                  «перенести копии?» при смене папки (если в старой есть копии), состояние/ход, «Сделать копию сейчас»,
-                  снимки с «Вернуть». Поля формы заполняются один раз, дальше — SSE 'backup' обновляет только состояние
-    MediaLibrary.vue  медиатека: drag&drop, очередь загрузки с прогрессом, фильтры (тип/категория/поиск),
-                  карточки (название и категория правятся прямо в карточке), просмотр, удаление, место на диске;
-                  метка «в плейлисте» / «в колоде», кнопка «＋ В плейлист», при удалении — предупреждение (плейлист и колоды).
-                  Фильтр-чип «Не используются: N · размер» (нет в плейлисте и карточках) + «Удалить показанные»;
-                  кнопка «Резервная копия: сегодня / ошибка / не настроена» открывает BackupPanel
-    mediaApi.js   prepareFile(): фото уменьшаются в браузере так, чтобы закрывать 1920×1080 (cover), JPEG→JPEG 0.9,
-                  PNG/WebP→WebP, GIF не трогаем; превью 480 px JPEG для всего; видео проверяется через <video>
-                  (не играет / нет кадра, например HEVC → ошибка «нужен MP4 H.264»). Запросы к /api/media, загрузка через XHR
-  store.js        reactive state, загрузка/сохранение (debounce 300 мс → PUT), startSync() — подписка на SSE,
-                  onServerEvent(type, fn) → отписка (для компонентов), connected/saveStatus, getLessons/setLessonField, getChanges/setChangeField, maxLessonOfDay
-  defaultData.js  структура данных по умолчанию + стартовые настройки (normalize() подмешивает их к файлу)
-  ui.js           выделение/редактирование ячейки: ui.sel = { letter: ключ колонки, idx, field }
-  themes.js       цветовые темы по вкладкам (5…11, changes): bg-градиенты, accent, shadow, outline, tabText
-  bells.js        DEFAULT_BELLS, parseBells, bellsForDay, bellStatus, plural
-  fit.js          директива v-fit: уменьшает шрифт, пока текст не влезет (v-fit="мин.размер")
+  main.js          /admin → admin/AdminApp.vue, иначе DisplayApp.vue (динамический import); startSync()
+  store.js         расписание: reactive state, debounce 300 мс → PUT, SSE; onServerEvent(type, fn) → отписка;
+                   getLessons/setLessonField, getChanges/setChangeField, hasChanges, maxLessonOfDay; saveStatus, connected
+  playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
+                   slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
+  decks.js         стор колод; makeDeck/makeCard, cardSeconds, dayNumber, takeCard; startDecks()
+  deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
+  rules.js         ruleState(when, now), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
+  themes.js        THEMES (5…11, changes): bg-градиенты, base, accent, shadow, outline, tabText; themeBackground(t)
+  bells.js         звонки: parseBells, bellsForDay, bellStatus (kind: none|before|lesson|break|after), fmt, plural
+  fit.js           директива v-fit="мин.размер": уменьшает шрифт, пока текст не влезет в ширину
+  defaultData.js   данные по умолчанию; ui.js — выделение ячейки в редакторе
+  display/         ЭКРАН
+    Player.vue     движок: плейлист по кругу; слоты active / leaving (~1 с под новым) / next (невидим, грузится);
+                   schedule+changes — одно табло (ключ 'board'); неподходящие слайды пропускаются; нет ни одного —
+                   FALLBACK (расписание). Гашение экрана (blank). Отчёт POST /api/screens. now — раз в 10 с
+    MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
+    NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
+    DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
+    InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
+  admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal…)
+    AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
+    PlaylistEditor.vue  строки слайдов, шаблон, гашение, «Когда», добавление (фото/видео, новость, колода)
+    NewsEditor.vue окно новости с живым превью; DeckEditor.vue — раздел «Колоды»
+    MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
+    NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
   components/
-    ScheduleBoard.vue бывший App.vue: сцена 1920×1080 (transform: scale под размер СВОЕГО блока через ResizeObserver),
-                      шапка с вкладками, клавиатура, модель «колонок», темы, звонки. Пропсы: editable; для плейлиста —
-                      tabs (какие вкладки по очереди), seconds (на вкладку), run (сменился → с первой вкладки),
-                      playing (идёт ли отсчёт); после последней вкладки emit('done'), при смене вкладки emit('tab').
-                      Своего автолистания больше нет.
-                      Проверка public/background.jpg — один раз на страницу (отдельный <script> модуля)
-    EditColumn.vue    универсальная колонка строк; поля задаются массивом fields { k, cls, ph, max, grow, wrap }
-    SlideStage.vue    сцена 1920×1080 с фоном темы (THEMES[theme]) и переменными --accent/--shadow-text/--tab-text,
-                      масштаб под свой блок (ResizeObserver). Основа NewsSlide и DeckCard
-    CalendarPanel.vue день недели, дата, часы, BellWidget, календарь месяца, кнопка ⚙; interactive=false — только показ
-    BellWidget.vue    «идёт N-й урок / перемена» + минуты до звонка
-    SettingsModal.vue настройки (интервалы, буквы классов, вкладка изменений, звонки, импорт/экспорт JSON);
-                      грузится лениво (defineAsyncComponent) и только в редакторе
+    ScheduleBoard.vue табло 1920×1080: вкладки 5…11 + «Изм.», колонки, звонки, клавиатура редактора. Пропсы editable,
+                   tabs, seconds, run, playing; emit done/tab. dayKey: Вс → Пн; на экране день без уроков → ближайший
+                   учебный (shiftNote)
+    SlideStage.vue сцена 1920×1080 с фоном темы для новостей и карточек; CalendarPanel.vue — день/часы/календарь
+                   справа на табло; BellWidget.vue; EditColumn.vue — колонка строк; SettingsModal.vue (только редактор)
+tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
 ```
 
-`src/components/ScheduleColumn.vue`, если он есть, — устаревший файл, нигде не используется, его можно удалить.
+## Данные (`data/`) — рабочие данные школы
 
-## Данные: `data/schedule.json`
-
-**Это рабочие данные школы, их редактируют через сайт. Не перезаписывать и не «чистить» без явной просьбы.**
-Структура:
-
+**schedule.json** — правится через сайт (PUT целиком):
 ```js
-{
-  version: 1,
-  updatedAt: <ms>,            // по нему клиенты понимают, что данные изменились
-  settings: {
-    interval, autoplay, lessonsCount,                 // lessonsCount = строк в колонке (сейчас 9)
-    letters: { "5": ["А","Б",...], ... "11": [...] },
-    changesInRotation, changesInterval, changesHideEmpty, changesCols,
-    bells: [{ name, days: [1,4], text: "0 8:00-8:25\n1 8:30-9:10..." }, ...]
-  },
-  schedule: { "<параллель>": { "<день 1..6>": { "<буква>": [ { s: предмет, r: кабинет }, ... ] } } },
-  changes:  { ch0: [ { c: класс, t: текст, r: кабинет } ], ch1: [...], ch2: [...] }
-}
+{ version: 1, updatedAt,                     // по updatedAt клиенты понимают, что данные новее
+  settings: { lessonsCount /* строк, 9 */, letters: { "5": ["А","Б"…] … }, changesCols, bells: [{ name, days, text }] },
+  schedule: { "<параллель>": { "<день 1..6>": { "<буква>": [ { s: предмет, r: кабинет } ] } } },
+  changes:  { ch0: [ { c: класс, t: текст, r: кабинет } ], ch1, ch2 } }
 ```
+День 1 = Пн … 6 = Сб; индекс урока = номер − 1; пустые места `{ s: "", r: "" }`, пустой хвост обрезается.
+Буквы классов кириллические заглавные. Новые поля — в `createDefaultData()` (normalize подмешивает их к старым файлам).
 
-- День недели: 1 = понедельник … 6 = суббота. В воскресенье показывается понедельник. На экране (не в редакторе),
-  если сегодня уроков нет ни у одного класса (суббота при пятидневке — в данных школы так и есть), показывается
-  ближайший следующий день с уроками и подпись «Суббота: уроков нет — показано расписание на понедельник» (shiftNote).
-- Индекс в массиве уроков = номер урока − 1. Пустые места внутри дня — `{ s: "", r: "" }`, пустой хвост обрезается.
-- Новые поля добавляем в `createDefaultData()`; `normalize()` в store.js подмешивает их к старым файлам.
-- Буквы классов кириллические, заглавные.
-
-## Данные: `data/media.json` и папка `media/`
-
-Тоже рабочие данные. Меняются только через API медиатеки (сервер сам читает-правит-пишет файл, клиент целиком его не PUT-ит).
-
+**playlist.json** — PUT целиком из редактора; при удалении файла правит сервер:
 ```js
-{ version: 1, items: [ {
-  id,            // [a-z0-9]+, время в base36 + случайный хвост; файл = media/<id><ext>
-  file,          // "<id>.mp4" — URL: /media/<file>
-  type,          // 'image' | 'video'
-  name,          // название для людей (по умолчанию — имя файла без расширения)
-  category,      // свободный текст, '' — без категории. Подсказки: «Мероприятия», «Образование»
-  size, w, h,    // байты и пиксели
-  duration,      // секунды, только у видео
-  thumb,         // "thumbs/<id>.jpg" или null
-  addedAt,       // ms
-} ] }
+{ version: 1, updatedAt, layout: 'full'|'panel', blank: { on, periods: [{ timeFrom, timeTo, days }] },
+  items: [                                   // порядок = порядок показа
+    { id, type: 'schedule', on, duration /* с на параллель */, grades: [] /* [] — все */ },
+    { id, type: 'changes',  on, duration, skipEmpty },
+    { id, type: 'image',    on, media, fit: 'cover'|'contain', duration },
+    { id, type: 'video',    on, media, fit, sound },            // до конца
+    { id, type: 'news',     on, label, title, text, date, media?, fit, theme, duration },
+    { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
+  ] }
+// у image/video/news/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days }
 ```
+id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
+from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
 
-## Данные: `data/decks.json` и `data/deck-state.json`
-
-Рабочие данные (колоды пишет редактор через PUT /api/decks целиком). Файла нет — GET отдаёт стартовый набор
-(`updatedAt: 0`), на диск он попадает при первой правке. Не перезаписывать стартовым набором существующий файл.
-
+**decks.json** — колоды (PUT целиком); нет файла → стартовый набор, на диск при первой правке:
 ```js
-{ version: 1, updatedAt: <ms>, decks: [ {
-  id, name, theme: '5'..'11'|'changes',
-  factTime, qTime, aTime,                        // секунды: факт; вопрос до ответа; ответ
-  cards: [
-    { id, type: 'fact',   title, text, media? },
-    { id, type: 'choice', text, options: [2..4], correct /* индекс */, explain, media? },
-    { id, type: 'open',   text, answer, explain, media? },
-  ] } ] }
+{ version: 1, updatedAt, decks: [ { id, name, theme, factTime, qTime, aTime, cards: [
+  { id, type: 'fact', title, text, media? } | { id, type: 'choice', text, options: [2..4], correct, explain, media? }
+  | { id, type: 'open', text, answer, explain, media? } ] } ] }
 ```
-
-`deck-state.json` — `{ <id колоды>: счётчик показов }` для режима «по очереди». Тестовые запуски его увеличивают,
-поэтому в тестах лучше поднимать копию сервера (см. «Проверка в браузере»).
-
-## Данные: `data/playlist.json`
-
-Рабочие данные. Пишется целиком через PUT /api/playlist (клиент), а при удалении файла — сервером.
-
-```js
-{ version: 1, updatedAt: <ms>,
-  blank: { on, periods: [ { timeFrom, timeTo, days } ] },   // гашение экрана; '' время — весь день, [] дни — каждый
-  layout: 'full' | 'panel',                       // общий шаблон фото/видео/новостей/колод; нет поля = 'full'
-  items: [                                        // порядок показа = порядок в массиве
-  { id, type: 'schedule', on, duration /* с на параллель */, grades: ['5','6'] /* [] — все */ },
-  { id, type: 'changes',  on, duration, skipEmpty },
-  { id, type: 'image',    on, media /* id из media.json */, fit: 'cover'|'contain', duration },
-  { id, type: 'video',    on, media, fit, sound },   // идёт до конца, duration нет
-  { id, type: 'news',     on, label, title, text, date /* свободный текст */, media? /* фото, необяз. */, fit,
-                          theme: '5'..'11'|'changes', duration },
-  { id, type: 'deck',     on, deck /* id колоды */, mode: 'next'|'daily' },   // длительность — из колоды
-] }
-// у image/video/news/deck может быть layout: 'full' | 'panel' — свой шаблон; нет поля = как общий playlist.layout
-// у любого слайда может быть when — правила показа (нет поля = всегда):
-when: { dateFrom: 'ГГГГ-ММ-ДД', dateTo, timeFrom: 'ЧЧ:ММ', timeTo, days: [1..7] }  // '' / [] — без ограничения
-```
-
-- Правила: даты включительно; время [timeFrom, timeTo), timeFrom > timeTo — через полночь; дни 1 = Пн … 7 = Вс
-  (не путать с днями расписания 1..6). Проверяются по часам ПК с экраном. Идущий слайд, у которого правило
-  истекло, доигрывает до конца. id слайда — `[a-z0-9]{4,32}`, иначе сервер выдаст новый (в тестах не брать короткие id).
-
-- Файла может не быть: тогда GET отдаёт плейлист по умолчанию (`schedule0`, `changes0`, `updatedAt: 0`).
-- `settings.interval / autoplay / changesInRotation / changesInterval / changesHideEmpty` в schedule.json остались
-  только как источник для плейлиста по умолчанию; из настроек ⚙ они убраны, табло их не читает.
+**media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
+category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
+**backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
 ## Поведение, которое легко сломать
 
-- **Экран и редактор**: на `/` редактировать нельзя (`ui.readonly`, `CalendarPanel interactive=false`, нет ⚙ и клавиатуры).
-  Всё редактирование — только в `/admin`. Экран не должен грузить код редактора: всё админское — через динамический import.
-- **Редактирование** (в `/admin`): 1-й клик выделяет поле, 2-й клик / Enter / F2 / начало ввода — редактирование.
-  Enter или ✓ сохраняет, Esc отменяет, Del/Backspace на выделенном поле очищает его. Стрелки и Tab перемещают.
-  В редакторе вкладки сами не листаются (автолистание только на экране). Клавиши — `onKey()` в ScheduleBoard.vue.
-- **Вкладки**: `TABS = ['5'..'11', 'changes']`. На экране вкладки листает плейлист (через пропсы ScheduleBoard), параллели
-  без букв пропускаются. Слайд changes со `skipEmpty` пропускается, если изменений нет.
-- **Плейлист на экране**: ключи слотов в Player — 'board' для табло и `<id слайда>#<seq>` для фото/видео; DOM-порядок слотов
-  постоянный (по seq), чтобы Vue не переставлял элементы — перестановка может остановить видео. `done` принимается только
-  от активного слота. Видео со звуком в киоске без клика заработает только с флагом браузера
-  `--autoplay-policy=no-user-gesture-required` (учесть в bat для киоска, этап 7); без него видео идёт без звука.
-- **Звонки** считаются по часам устройства, которое показывает страницу (ПК с экраном), а не сервера.
-  Учитываются только уроки ≤ последнему уроку дня, который есть хоть у одного класса (`maxLessonOfDay`), плюс нулевой.
-  На Пн/Чт есть нулевой урок (8:00–8:25), в таблице уроков ему строки нет.
-  Подсветка в колонках только когда открыт сегодняшний день: текущий урок (`.pill.now`) и следующий за ≤15 мин (`.pill.next`).
-- **Сцена** фиксирована 1920×1080 и масштабируется целиком. Размеры задаём в px под этот холст, а не в vw.
-- Крупные подписи «5А» — обводка через SVG-фильтр `#outline` (feMorphology), а не `-webkit-text-stroke`:
-  у Montserrat перекрываются контуры, и stroke даёт артефакты.
-- Ячейки: длинный текст ужимается директивой `v-fit`. Текст изменений (`wrap: true`) переносится максимум на 2 строки.
-- Фоны всех тем лежат стопкой (`.bg`) и плавно переключаются через opacity. ПК для экрана может быть
-  слабым: без нужды не добавлять тяжёлые `filter: blur` на большие слои и бесконечные анимации на много элементов.
-- **Синхронизация**: правка → PUT → сервер шлёт SSE `data { updatedAt }` → клиенты, у которых `updatedAt` старее,
-  делают GET. После обрыва связи EventSource переподключается сам (retry 3 с) и по `hello` догружает данные.
-  Если `boot` в `hello` сменился (сервер перезапущен), **экран** делает `location.reload()` — так он получает новую
-  сборку без доступа к ПК. Редактор не перезагружается. Значит, после `build.bat` достаточно перезапустить `start.bat`.
-
-## Темы
-
-5 — янтарь, 6 — голубой, 7 — зелёный+жёлтый, 8 — красный+чёрный, 9 — киберпанк (неон-синий+малиновый, сетка),
-10 — нежно-розовый, 11 — фиолетовая «магия» (звёзды), «Изменения» — коричневый+зелёный.
+- **Экран и редактор**: на `/` ничего не редактируется (`ui.readonly`, `CalendarPanel interactive=false`, нет ⚙).
+- **Редактор ячеек**: 1-й клик — выделение, 2-й клик / Enter / F2 / ввод — правка; Enter/✓ сохраняет, Esc отменяет,
+  Del очищает, стрелки и Tab ходят. Клавиши — `onKey()` в ScheduleBoard. В редакторе вкладки сами не листаются.
+- **Слоты Player**: ключ 'board' у табло, `<id>#<seq>` у остальных; DOM-порядок постоянный (по seq), иначе Vue
+  переставит элементы и видео остановится. `done` принимается только от активного слота.
+- **Звонки** — по часам ПК с экраном. Учитываются уроки ≤ `maxLessonOfDay(день)` плюс нулевой (Пн/Чт 8:00–8:25,
+  строки в таблице у него нет). Подсветка урока — только когда показан именно сегодняшний день.
+- **Сцена** фиксирована 1920×1080 и масштабируется целиком: размеры в px этого холста, не в vw/vh. Исключение —
+  InfoPanel поверх фото/видео: ширина `calc(100vh * 440 / 1080)`.
+- Подписи «5А» — обводка SVG-фильтром `#outline`, не `-webkit-text-stroke` (у Montserrat артефакты).
+- Длинный текст в ячейках ужимает `v-fit`; текст изменений — максимум 2 строки.
+- **Слабый ПК**: без тяжёлых `filter: blur` на больших слоях и бесконечных анимаций на многих элементах; анимировать
+  только `transform` и `opacity`.
+- **Синхронизация**: правка → PUT → SSE (`data`/`playlist`/`decks` с updatedAt) → клиенты со старым updatedAt делают GET.
+  После обрыва EventSource переподключается сам и по `hello` догружает. Сменился `boot` → **экран** делает reload
+  (так получает новую сборку). Восстанавливая данные «из прошлого», ставь свежий updatedAt — иначе клиенты не загрузят.
+- Видео со звуком без клика — только с флагом браузера `--autoplay-policy=no-user-gesture-required` (есть в kiosk.ps1).
+- Резервные копии делает только `server.js` (не Vite). Сервер при автозапуске работает от SYSTEM.
 
 ## Оформление
 
-Стеклянные панели (полупрозрачный белый, скругления 40–64 px), белый текст с тенью `var(--shadow-text)`,
-акцент `var(--accent)` из темы. Заглавные буквы для предметов и заголовков, Montserrat 800/900.
+Стеклянные панели (полупрозрачный белый, скругления 40–64 px, `border: 1px solid var(--glass-border)`), белый текст
+с тенью `var(--shadow-text)`, акцент `var(--accent)` из темы. Заголовки и предметы — заглавными, Montserrat 800/900.
+Темы табло: 5 янтарь, 6 голубой, 7 зелёный+жёлтый, 8 красный+чёрный, 9 киберпанк (сетка), 10 розовый,
+11 фиолетовая «магия» (звёзды), changes — коричневый+зелёный. Редактор — тёмный интерфейс (#1d1f24, кнопки #3b404a,
+акцент #3d7be0). Подписи и сообщения для пользователя — простым русским языком, без технических терминов.
 
-## План развития: медиаплеер (в работе)
+## План
 
-Проект расширяется из табло расписания в школьный медиаплеер: фото/видео с мероприятий, новости,
-образовательный контент, квесты. Сервер локальный, авторизации нет.
+Этапы 0–7 готовы (подробно — `docs/history.md`). Сейчас **этап 8 — доработки**: готовые задачи лежат в
+`docs/prompts/`, по одной на сессию, в любом порядке (каждая — следующая правка `v0.8.x`). Сделанную задачу
+отметь здесь: номер, версия, одна строка.
 
-Решения, принятые с владельцем:
-- Все дисплеи показывают **один общий плейлист** (каналы на будущее не нужны).
-- `/` — экран для зрителей (только показ), `/admin` — редактор в отдельной вкладке. Правки сразу видны на экранах.
-- Шаблон экрана настраивается: весь экран под слайд или зоны (расписание/звонки/часы + медиа).
-- Файлы загружаются через редактор (drag&drop), сервер кладёт их в `media/`.
-- У слайда могут быть правила показа: период дат, время суток, дни недели.
-- Стек остаётся Vue + Node без зависимостей на сервере. Python/FastAPI и отдельная БД не нужны.
+Сделано в этапе 8:
+- v0.8.0 — CLAUDE.md переписан под исполнителя, задачи в docs/prompts/.
 
-Этапы (отмечать по мере готовности):
-0. [x] git-репозиторий, .gitignore, проверка сборки и боевого сервера.
-1. [x] (v0.1.0) Каркас: `/` и `/admin` (админка — отдельный lazy-чанк), SSE `/api/events` вместо опроса раз в 20 с,
-       раздача `media/` с поддержкой Range, fallback на index.html. Редактирование расписания переезжает в `/admin`.
-2. [x] Медиатека (v0.2.0): потоковая загрузка без лимита в 5 МБ, уменьшение фото в браузере до 1920×1080, список, удаление.
-3. [x] (v0.3.0) Плейлист и движок показа: слайды schedule / changes / image / video, длительность, видео до конца,
-       предзагрузка следующего, кроссфейд, редактор порядка и вкл/выкл (`/admin#playlist`), «＋ В плейлист» в медиатеке.
-       Данные — `data/playlist.json`. При удалении файла — предупреждение и слайды убираются сервером.
-4. [x] (v0.4.0) Правила показа (даты, время суток, дни недели) у каждого слайда + «Сейчас на экране» в разделе «Плейлист»
-       (отчёты экранов POST /api/screens, имя экрана — /?name=…, метки на строках плейлиста).
-5. [x] (v0.5.0) Шаблоны: у фото/видео «весь экран» или «с панелью справа» (день, дата, часы, звонок, изменения).
-       Общий шаблон в плейлисте + свой у слайда. Табло расписания всегда во весь экран.
-       В кадрировании «На весь экран» переименовано в «Заполнить», чтобы не путать с шаблоном.
-6. [x] (v0.6.0) Новости (слайд news, окно с превью) и колоды карточек (факты, вопросы А/Б/В/Г, загадки):
-       раздел «Колоды», вставка списком, стартовый набор, режимы «по очереди» / «одна в день».
-       Решения — ниже, в «Этап 6: решения владельца». v0.6.1 — шаблон «с панелью справа» и у новостей/колод.
-7. [x] (v0.7.0) Обслуживание: резервные копии в папку по расписанию (медиатека → «Резервная копия»: путь, частота,
-       перенос при смене папки, возврат из снимка), фильтр «Не используются» в медиатеке, гашение экрана по расписанию
-       (только страница табло), kiosk.bat (Яндекс.Браузер, свой профиль, `--autoplay-policy=no-user-gesture-required`),
-       автозапуск через планировщик (сервер — при включении от SYSTEM, киоск — при входе). На школьном ПК не проверено:
-       координаты телевизора (x в kiosk-settings.txt) и поведение `--kiosk` в Яндекс.Браузере — уточнить у владельца.
-       v0.7.1 — pack.bat: пакеты для установки и обновления на школьном ПК.
-       v0.7.2 — в день без уроков (суббота) экран показывает ближайший учебный день; в пакете src/ — только deckText.js
-       (сайт уже собран в dist/), это нормально. Проверять табло и в выходные: пустая суббота выглядит как «нет расписания».
-8. [ ] Квесты (серия слайдов с загадками / QR-коды) — обсуждаем только после этапов 1–7. Опросы и квесты
-       с телефонов пока невозможны: у учеников только мобильный интернет, до школьного сервера телефоны не достают
-       (общего Wi-Fi нет). Интерактив без сенсора — только то, что экран показывает сам (вопрос → ответ по таймеру).
-
-### Этап 6: решения владельца (обсудили 2026-10-09)
-
-Телевизоры не сенсорные, телефоны до сервера не достают, поэтому «интерактив» — это слайды, которые разворачиваются
-сами по времени. Образовательные видео и фото идут через медиатеку (категория «Образование»), отдельный тип им не нужен.
-Новости можно делать двумя способами: готовой картинкой из Canva (уже работает как фото) или слайдом из редактора (новое).
-
-**Новость** — новый тип слайда в плейлисте (`type: 'news'`), содержимое лежит прямо в слайде:
-- метка (например «Новости» / «Событие» / «Объявление»), заголовок, текст (2–5 предложений), дата (необязательно),
-  фото из медиатеки (необязательно), duration;
-- раскладка: **фото слева (~половина экрана), справа на фоне темы стеклянная панель**: метка · дата, крупный
-  заголовок, текст (ужимать через v-fit / ограничение строк). Без фото текст на весь экран;
-- оформление в стиле табло (Montserrat 800/900, стекло, тема — например одна из THEMES на выбор у новости);
-- редактор: форма прямо в строке плейлиста или в модальном окне + живое превью.
-
-**Колоды** — наборы карточек, заполненные заранее; в плейлисте один слайд `type: 'deck'` с id колоды,
-каждый показ — следующая карточка по кругу (вариант режима: «одна карточка в день»). Позицию колоды хранить
-на сервере, чтобы все экраны и перезапуски шли дальше, а не с начала. Данные — отдельный файл (например `data/decks.json`)
-с API по образцу плейлиста. Виды карточек:
-- **факт** — заголовок колоды («Слово дня», «Знаешь ли ты?»), текст, необязательная картинка из медиатеки;
-- **вопрос с вариантами** — вопрос, 2–4 варианта А/Б/В/Г, номер верного; на экране полоска-таймер,
-  потом верный вариант подсвечивается, остальные гаснут, необязательное пояснение;
-- **открытый вопрос / загадка** — вопрос с таймером, потом «Ответ: …» и необязательное пояснение;
-- у вопроса может быть картинка из медиатеки. Время на вопрос и на ответ задаётся у колоды (секунды).
-
-Наполнение колод: вручную в редакторе (новый раздел `/admin#decks`), **вставка списком** (строки из Excel/таблицы
-или текст из нейросети — формат простой, с табуляцией или «;», с подсказкой-примером в редакторе) и
-**стартовый набор**, который составляет Claude: несколько колод под школьную программу (например «Слово дня»
-по-английски, «Знаешь ли ты?», викторина-эрудиция, загадки, факты о Башкортостане). Факты в стартовом наборе
-должны быть проверенными и бесспорными. Он кладётся в данные только если колод ещё нет: рабочие данные не перезаписывать.
+Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
