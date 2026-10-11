@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import BellWidget from './BellWidget.vue'
+import Clock from './Clock.vue'
 import { vFit } from '../fit.js'
 
 const props = defineProps({
@@ -30,7 +31,6 @@ const dateText = computed(() => {
   const d = props.viewDate
   return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]} ${d.getFullYear()}`
 })
-const clock = computed(() => props.today.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }))
 const isToday = computed(() => sameDay(props.today, props.viewDate))
 
 function mondayOf(d) {
@@ -76,7 +76,7 @@ function shift(n) {
     <div v-fit="30" class="day-name">{{ dayName }}</div>
     <div class="date-line">
       <span>{{ dateText }}</span>
-      <span class="clock">{{ clock }}</span>
+      <span class="clock"><Clock :date="today" /></span>
     </div>
 
     <BellWidget :status="bell" />

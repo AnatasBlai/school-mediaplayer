@@ -223,6 +223,7 @@ src/components/EditColumn.vue    колонка с редактируемыми 
 src/components/BellWidget.vue   блок «до звонка»
 src/bells.js / src/themes.js     звонки и цветовые темы
 src/components/CalendarPanel.vue  день недели, часы и календарь
+src/components/Clock.vue          часы «ЧЧ:ММ» с мигающим двоеточием
 src/components/SettingsModal.vue  настройки
 src/store.js                    данные и сохранение на сервер
 src/defaultData.js              стартовое расписание

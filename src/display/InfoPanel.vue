@@ -6,6 +6,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { state, maxLessonOfDay } from '../store.js'
 import { bellsForDay, bellStatus } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
+import Clock from '../components/Clock.vue'
 import { vFit } from '../fit.js'
 
 const props = defineProps({ inStage: Boolean })
@@ -26,7 +27,6 @@ const DAYS_FULL = ['Воскресенье', 'Понедельник', 'Втор
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 const dayName = computed(() => DAYS_FULL[now.value.getDay()])
 const dateText = computed(() => `${now.value.getDate()} ${MONTHS_GEN[now.value.getMonth()]} ${now.value.getFullYear()}`)
-const clock = computed(() => now.value.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }))
 
 const bell = computed(() => {
   const dow = now.value.getDay()
@@ -64,7 +64,7 @@ onBeforeUnmount(() => {
       <div class="card">
         <div v-fit="30" class="day-name">{{ dayName }}</div>
         <div class="date">{{ dateText }}</div>
-        <div class="clock">{{ clock }}</div>
+        <div class="clock"><Clock :date="now" /></div>
 
         <BellWidget :status="bell" />
 

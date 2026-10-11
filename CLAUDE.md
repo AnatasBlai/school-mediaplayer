@@ -120,7 +120,7 @@ src/
     ScheduleBoard.vue табло 1920×1080: вкладки 5…11 + «Изм.», колонки, звонки, клавиатура редактора. Пропсы editable,
                    tabs, seconds, run, playing; emit done/tab. dayKey: Вс → Пн; на экране день без уроков → ближайший
                    учебный (shiftNote)
-    SlideStage.vue сцена 1920×1080 с фоном темы для новостей и карточек; CalendarPanel.vue — день/часы/календарь
+    SlideStage.vue сцена 1920×1080 с фоном темы для новостей и карточек; CalendarPanel.vue — день/часы/календарь; Clock.vue — «ЧЧ:ММ» с мигающим двоеточием
                    справа на табло; BellWidget.vue; EditColumn.vue — колонка строк; SettingsModal.vue (только редактор)
 tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
 ```
@@ -202,5 +202,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.0 — CLAUDE.md переписан под исполнителя, задачи в docs/prompts/.
 - v0.8.1 — длинный день недели в боковых панелях (InfoPanel, CalendarPanel) ужимается `v-fit="30"`.
 - v0.8.2 — в блоке «Изменения» боковой панели убрана надпись «N строк».
+- v0.8.3 — двоеточие в часах обеих боковых панелей мигает (общий Clock.vue, анимация opacity 1 с).
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
