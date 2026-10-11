@@ -94,6 +94,17 @@
   font-weight: 600;
   font-size: 13px;
 }
+/* жёлтое предупреждение (не мешает сохранять) */
+.a-warn {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 194, 71, 0.16);
+  border: 1px solid #ffc247;
+  color: #ffd27a;
+  font-weight: 700;
+  font-size: 13px;
+}
 
 /* цвет темы: кружок с фоном темы */
 .a-swatches {

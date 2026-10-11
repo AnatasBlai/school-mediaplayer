@@ -2,7 +2,7 @@
 // Новость: фото слева (если есть), справа стеклянная панель — метка · дата, заголовок, текст.
 // Без фото текст на всю сцену. На экране идёт item.duration секунд, потом 'done'.
 // В редакторе — живое превью (active = false, таймера нет).
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { mediaById, mediaUrl, thumbUrl } from '../playlist.js'
 import SlideStage from '../components/SlideStage.vue'
 import InfoPanel from './InfoPanel.vue'
@@ -12,8 +12,9 @@ const props = defineProps({
   active: Boolean,
   preview: Boolean, // превью в редакторе: анимация идёт по кругу
   layout: { type: String, default: 'full' }, // 'panel' — справа панель с часами, звонками, изменениями
+  measure: Boolean, // только превью в редакторе: мерить, не обрезан ли текст, и сообщать в 'overflow'
 })
-const emit = defineEmits(['done'])
+const emit = defineEmits(['done', 'overflow'])
 
 const file = computed(() => (props.item.media ? mediaById(props.item.media) : null))
 const photo = computed(() => (file.value?.type === 'image' ? file.value : null))
@@ -58,6 +59,28 @@ watch(
 )
 onMounted(() => props.active && start())
 onBeforeUnmount(() => clearTimeout(timer))
+
+// предупреждение «не помещается»: после отрисовки и загрузки шрифтов сравниваем высоту содержимого и блока
+const titleEl = ref(null)
+const textEl = ref(null)
+// допуск 0,4 строки: у плотного заголовка край букв чуть выше строки, это ещё не обрезка
+const cut = (el) => !!el && (el.scrollHeight > el.clientHeight + parseFloat(getComputedStyle(el).fontSize) * 0.4 || el.scrollWidth > el.clientWidth + 2)
+let measureSeq = 0
+async function doMeasure() {
+  const seq = ++measureSeq
+  await nextTick()
+  await document.fonts?.ready
+  if (seq !== measureSeq) return
+  emit('overflow', { title: cut(titleEl.value), text: cut(textEl.value) })
+}
+if (props.measure) {
+  watch(
+    () => [props.item.title, props.item.text, props.item.label, props.item.date, props.item.media, props.item.fit, props.layout],
+    doMeasure,
+    { flush: 'post' },
+  )
+  onMounted(doMeasure)
+}
 </script>
 
 <template>
@@ -76,8 +99,8 @@ onBeforeUnmount(() => clearTimeout(timer))
           <span v-if="item.label" class="label">{{ item.label }}</span>
           <span v-if="item.date" class="date">{{ item.date }}</span>
         </div>
-        <h1 class="title" :style="{ fontSize: titleSize }">{{ item.title }}</h1>
-        <div v-if="item.text" class="text" :style="{ fontSize: textSize }">{{ item.text }}</div>
+        <h1 ref="titleEl" class="title" :style="{ fontSize: titleSize }">{{ item.title }}</h1>
+        <div v-if="item.text" ref="textEl" class="text" :style="{ fontSize: textSize }">{{ item.text }}</div>
       </div>
     </div>
     <InfoPanel v-if="panel" in-stage />

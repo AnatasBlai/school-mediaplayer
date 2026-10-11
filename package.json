@@ -1,7 +1,7 @@
 {
   "name": "shedule",
   "private": true,
-  "version": "0.8.8",
+  "version": "0.8.9",
   "type": "module",
   "description": "Электронное табло расписания уроков (Vue 3 + Vite)",
   "scripts": {

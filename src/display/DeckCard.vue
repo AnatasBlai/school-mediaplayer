@@ -4,7 +4,7 @@
 //   choice — вопрос и варианты А/Б/В/Г; в фазе 'a' верный подсвечивается, остальные гаснут, ниже пояснение;
 //   open   — вопрос; в фазе 'a' появляется «Ответ: …» и пояснение.
 // У любой карточки может быть картинка из медиатеки — тогда она слева.
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { mediaById, mediaUrl } from '../playlist.js'
 import { LETTERS } from '../deckText.js'
 import SlideStage from '../components/SlideStage.vue'
@@ -17,7 +17,9 @@ const props = defineProps({
   left: { type: Number, default: null }, // секунд до конца фазы (для таймера)
   progress: { type: Number, default: 0 }, // 0…1 — сколько фазы прошло
   layout: { type: String, default: 'full' }, // 'panel' — справа панель с часами, звонками, изменениями
+  measure: Boolean, // только превью в редакторе: мерить, не вылезает ли содержимое, и сообщать в 'overflow'
 })
+const emit = defineEmits(['overflow'])
 const panel = computed(() => props.layout === 'panel')
 
 const photo = computed(() => {
@@ -47,6 +49,22 @@ const optSize = computed(() => {
   const n = Math.max(0, ...options.value.map((x) => x.o.length))
   return Math.round(pick(n, [[16, 44], [30, 36], [50, 30], [999, 26]]) * k.value) + 'px'
 })
+
+// предупреждение «не помещается»: содержимое выше блока .content (он обрезает лишнее)
+const contentEl = ref(null)
+let measureSeq = 0
+async function doMeasure() {
+  const seq = ++measureSeq
+  await nextTick()
+  await document.fonts?.ready
+  const el = contentEl.value
+  if (seq !== measureSeq || !el) return
+  emit('overflow', { text: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2 })
+}
+if (props.measure) {
+  watch(() => [JSON.stringify(props.card), props.layout, props.deck.name], doMeasure, { flush: 'post' })
+  onMounted(doMeasure)
+}
 </script>
 
 <template>
@@ -63,7 +81,7 @@ const optSize = computed(() => {
       <div class="body">
         <div v-if="photo" class="photo"><img :src="mediaUrl(photo)" alt="" /></div>
 
-        <div class="content">
+        <div ref="contentEl" class="content">
           <!-- факт -->
           <template v-if="card.type === 'fact'">
             <div v-if="card.title" class="fact-title">{{ card.title }}</div>

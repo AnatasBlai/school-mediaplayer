@@ -2,7 +2,7 @@
 // Колоды (/admin#decks): наборы карточек — факты, вопросы с вариантами, загадки.
 // Слева список колод, в середине настройки и карточки, справа превью выбранной карточки «как на экране».
 // Правки сохраняются сами (src/decks.js). Вставка списком — формат из src/deckText.js.
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { decks, decksLoaded, deckById, makeDeck, makeCard, cardSeconds, startDecks } from '../decks.js'
 import { CARD_TYPES, LETTERS, parseCards, cardsToText, newCardId } from '../deckText.js'
 import { playlist, makeSlide, mediaById, thumbUrl, startPlaylist, layoutOf } from '../playlist.js'
@@ -88,6 +88,11 @@ const previewCard = computed(() => {
   const cards = deck.value?.cards || []
   return cards.find((c) => c.id === previewId.value) || cards[0] || null
 })
+// карточки, которым в превью не хватило места (запоминаем по мере просмотра)
+const tooLong = reactive({})
+function onOverflow(o) {
+  if (previewCard.value) tooLong[previewCard.value.id] = o.text
+}
 const previewPhase = ref('q')
 // шаблон в превью — как у первого слайда этой колоды в плейлисте, иначе общий
 const previewLayout = computed(() => {
@@ -222,6 +227,7 @@ async function copyText() {
           <li v-for="(c, i) in deck.cards" :key="c.id" class="card" :class="{ on: previewCard && c.id === previewCard.id }" @focusin="previewId = c.id">
             <div class="card-top">
               <span class="num">{{ i + 1 }}</span>
+              <span v-if="tooLong[c.id]" class="warn-mark" title="Не помещается на экране">⚠</span>
               <select class="a-select" :value="c.type" @change="setType(c, $event.target.value)">
                 <option v-for="(t, k) in CARD_TYPES" :key="k" :value="k">{{ t }}</option>
               </select>
@@ -267,8 +273,9 @@ async function copyText() {
       <aside class="preview">
         <span class="a-label">Так будет на экране</span>
         <div class="screen">
-          <DeckCard v-if="previewCard" :deck="deck" :card="previewCard" :layout="previewLayout" :phase="previewPhase" :left="previewPhase === 'a' ? deck.aTime : previewCard.type === 'fact' ? deck.factTime : deck.qTime" />
+          <DeckCard v-if="previewCard" measure @overflow="onOverflow" :deck="deck" :card="previewCard" :layout="previewLayout" :phase="previewPhase" :left="previewPhase === 'a' ? deck.aTime : previewCard.type === 'fact' ? deck.factTime : deck.qTime" />
         </div>
+        <p v-if="previewCard && tooLong[previewCard.id]" class="a-warn">⚠ Текст не помещается — сократите вопрос или варианты, уберите картинку</p>
         <div v-if="previewCard && previewCard.type !== 'fact'" class="a-seg">
           <button :class="{ on: previewPhase === 'q' }" @click="previewPhase = 'q'">Вопрос</button>
           <button :class="{ on: previewPhase === 'a' }" @click="previewPhase = 'a'">Ответ</button>
@@ -450,6 +457,10 @@ async function copyText() {
   min-width: 24px;
   color: #8b909a;
   font-weight: 800;
+}
+.warn-mark {
+  color: #ffc247;
+  font-weight: 900;
 }
 .mini {
   width: 54px;

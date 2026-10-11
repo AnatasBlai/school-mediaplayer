@@ -17,6 +17,7 @@ function today() {
   props.item.date = `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`
 }
 
+const cut = ref({ title: false, text: false }) // что в превью обрезано
 const picking = ref(false)
 function pick(id) {
   props.item.media = id
@@ -116,7 +117,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
         <div class="preview">
           <span class="a-label">Так будет на экране</span>
-          <div class="screen"><NewsSlide :item="item" :active="false" preview :layout="layoutOf(item)" /></div>
+          <div class="screen"><NewsSlide :item="item" :active="false" preview measure :layout="layoutOf(item)" @overflow="cut = $event" /></div>
+          <p v-if="cut.title" class="a-warn">⚠ Заголовок не помещается целиком — сократите его</p>
+          <p v-if="cut.text" class="a-warn">⚠ Текст не помещается — сократите его или уберите фото</p>
         </div>
       </div>
     </div>
