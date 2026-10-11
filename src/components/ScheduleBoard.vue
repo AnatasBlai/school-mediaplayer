@@ -19,6 +19,10 @@ import {
   getChanges,
   setChangeField,
   maxLessonOfDay,
+  changesActive,
+  hasChangeRows,
+  clearChanges,
+  ymd,
 } from '../store.js'
 import { ui, clearSelection } from '../ui.js'
 import { THEMES, themeBackground } from '../themes.js'
@@ -175,10 +179,12 @@ const CHANGE_FIELDS = [
 const columns = computed(() => {
   if (isChanges.value) {
     const n = state.settings.changesCols
+    // на экране устаревшие замены не показываем (в редакторе они видны с плашкой)
+    const hide = !props.editable && !changesActive(now.value)
     return Array.from({ length: n }, (_, i) => ({
       key: 'ch' + i,
       label: '',
-      rows: getChanges('ch' + i),
+      rows: hide ? Array.from({ length: state.settings.lessonsCount }, () => ({ c: '', t: '', r: '' })) : getChanges('ch' + i),
       fields: CHANGE_FIELDS,
     }))
   }
@@ -316,7 +322,7 @@ const sizes = computed(() => {
   const n = state.settings.lessonsCount
   const areaW = 1414
   const colW = (areaW - (cols - 1) * 14) / cols
-  const cellH = Math.min(60, Math.max(36, (isChanges.value ? 740 : 610) / (n + 0.24 * (n - 1))))
+  const cellH = Math.min(60, Math.max(36, (isChanges.value ? (props.editable ? 670 : 740) : 610) / (n + 0.24 * (n - 1))))
   return {
     '--cell-h': cellH + 'px',
     '--cell-font': Math.round(Math.min(isChanges.value ? 22 : 21, Math.max(13, colW * 0.075), cellH * 0.36)) + 'px',
@@ -331,7 +337,25 @@ const stageVars = computed(() => ({
   '--tab-text': theme.value.tabText,
 }))
 
-const headerTitle = computed(() => (isChanges.value ? 'Изменения' : `${grade.value} классы`))
+const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+const dateParts = computed(() => (state.settings.changesDate || '').split('-').map(Number))
+const headerTitle = computed(() => {
+  if (!isChanges.value) return `${grade.value} классы`
+  const [, m, d] = dateParts.value
+  return m ? `Изменения на ${d} ${MONTHS_GEN[m - 1]}` : 'Изменения'
+})
+
+// дата изменений в редакторе: кнопки «сегодня» / «завтра», плашка для прошедшего дня
+function setChangesDate(offset) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  state.settings.changesDate = ymd(d)
+}
+const staleChanges = computed(() => props.editable && isChanges.value && !changesActive(now.value) && hasChangeRows())
+const staleText = computed(() => {
+  const [, m, d] = dateParts.value
+  return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}`
+})
 
 // ---------- жизненный цикл ----------
 let clockTimer, tickTimer, resizeObs
@@ -401,7 +425,7 @@ onBeforeUnmount(() => {
           </nav>
 
           <Transition name="fade" mode="out-in">
-            <div :key="tab" v-fit="40" class="grade-title">{{ headerTitle }}</div>
+            <div :key="headerTitle" v-fit="isChanges ? 26 : 40" class="grade-title">{{ headerTitle }}</div>
           </Transition>
         </header>
 
@@ -409,6 +433,19 @@ onBeforeUnmount(() => {
         <main class="body">
           <section class="schedule" :style="sizes">
             <div v-if="shiftNote && !isChanges" class="note">{{ shiftNote }}</div>
+            <div v-if="editable && isChanges" class="date-bar" @mousedown.stop>
+              <label>
+                Изменения на:
+                <input v-model="state.settings.changesDate" type="date" class="date-input" />
+              </label>
+              <button @click="setChangesDate(0)">сегодня</button>
+              <button @click="setChangesDate(1)">завтра</button>
+              <button v-if="state.settings.changesDate" @click="state.settings.changesDate = ''">без даты</button>
+              <span v-if="staleChanges" class="stale">
+                Эти изменения на {{ staleText }} — день прошёл, на экране они не показываются.
+                <button @click="clearChanges()">Очистить</button>
+              </span>
+            </div>
             <Transition name="slide" mode="out-in">
               <div :key="tab + '-' + dayKey" class="columns">
                 <EditColumn
@@ -672,6 +709,44 @@ onBeforeUnmount(() => {
   font-size: 30px;
   line-height: 1.5;
   text-shadow: var(--shadow-text);
+}
+
+.date-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 800;
+  font-size: 18px;
+  white-space: nowrap;
+  text-shadow: var(--shadow-text);
+}
+.date-bar button,
+.date-input {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+.date-bar .stale {
+  margin-left: auto;
+  padding: 6px 14px;
+  white-space: normal;
+  border-radius: 999px;
+  background: #f2c744;
+  color: #3a2c00;
+  font-size: 15px;
+  text-shadow: none;
+}
+.date-bar .stale button {
+  margin-left: 8px;
+  background: rgba(0, 0, 0, 0.18);
 }
 
 /* ---------- анимации ---------- */

@@ -24,6 +24,7 @@ function normalize(d) {
   out.settings.lessonsCount = clamp(Number(out.settings.lessonsCount) || 8, 1, 12)
   out.settings.changesInterval = clamp(Number(out.settings.changesInterval) || 20, 3, 600)
   out.settings.changesCols = clamp(Number(out.settings.changesCols) || 3, 1, 4)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(out.settings.changesDate)) out.settings.changesDate = ''
   if (!Array.isArray(out.settings.bells) || !out.settings.bells.length) out.settings.bells = def.settings.bells
   return out
 }
@@ -212,12 +213,29 @@ export function setChangeField(col, idx, field, value) {
   while (arr.length && empty(arr[arr.length - 1])) arr.pop()
 }
 
-export function hasChanges() {
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** Изменения «действуют» на экране: дата не задана или указанный день ещё не закончился (по часам ПК). */
+export function changesActive(now = new Date()) {
+  const d = state.settings.changesDate
+  return !d || ymd(now) <= d
+}
+
+/** Есть ли непустые строки изменений (независимо от даты). */
+export function hasChangeRows() {
   return Object.values(state.changes || {}).some((col) => (col || []).some((x) => x.c || x.t || x.r))
 }
 
+/** Есть ли что показать на экране сейчас: строки есть и день не прошёл. */
+export function hasChanges(now = new Date()) {
+  return changesActive(now) && hasChangeRows()
+}
+
+export { ymd }
+
 export function clearChanges() {
   state.changes = { ch0: [], ch1: [], ch2: [] }
+  state.settings.changesDate = ''
 }
 
 /** Последний урок дня, который есть хоть у одного класса (для звонков). */

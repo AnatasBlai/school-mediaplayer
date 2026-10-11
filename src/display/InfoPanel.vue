@@ -3,7 +3,7 @@
 // Рисуется на холсте 440×1080 и масштабируется по высоте своего блока (как табло 1920×1080).
 // inStage — панель лежит внутри сцены SlideStage (новость, колода): без своего масштаба, справа на сцене.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { state, maxLessonOfDay } from '../store.js'
+import { state, maxLessonOfDay, changesActive } from '../store.js'
 import { bellsForDay, bellStatus } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
 import Clock from '../components/Clock.vue'
@@ -37,6 +37,7 @@ const bell = computed(() => {
 // изменения из всех колонок табло подряд, без пустых строк
 const changes = computed(() => {
   const rows = []
+  if (!changesActive(now.value)) return rows
   for (let i = 0; i < state.settings.changesCols; i++) {
     for (const x of state.changes?.['ch' + i] || []) if (x && (x.c || x.t || x.r)) rows.push(x)
   }

@@ -18,6 +18,7 @@ export function createDefaultData() {
       changesInterval: 20,
       changesHideEmpty: true,
       changesCols: 3,
+      changesDate: '', // 'ГГГГ-ММ-ДД' — на какой день изменения; после этого дня экран их не показывает; '' — всегда
       // расписание звонков (группы дней)
       bells: DEFAULT_BELLS.map((b) => ({ ...b, days: [...b.days] })),
       letters: {

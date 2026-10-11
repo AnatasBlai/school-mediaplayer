@@ -37,7 +37,7 @@ const now = ref(new Date())
 function playable(it) {
   if (!it.on || !ruleState(it.when, now.value).ok) return false
   if (it.type === 'schedule') return boardTabs(it).length > 0
-  if (it.type === 'changes') return !it.skipEmpty || hasChanges()
+  if (it.type === 'changes') return !it.skipEmpty || hasChanges(now.value)
   if (it.type === 'news') return !!(it.title || it.text)
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type

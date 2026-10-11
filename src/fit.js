@@ -9,9 +9,11 @@ export function fitText(el, min = 10) {
   // ширина с дробной частью: scrollWidth округляется и пропускает «почти влезло»
   const k = el.offsetWidth ? el.getBoundingClientRect().width / el.offsetWidth : 1
   const textWidth = () => {
+    el.style.flex = 'none' // у flex-элемента с базой 0 width иначе не действует
     el.style.width = 'max-content'
     el.style.maxWidth = 'none'
     const w = el.getBoundingClientRect().width / (k || 1)
+    el.style.flex = ''
     el.style.width = ''
     el.style.maxWidth = ''
     return w

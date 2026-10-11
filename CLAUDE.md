@@ -93,7 +93,8 @@ server/
 src/
   main.js          /admin → admin/AdminApp.vue, иначе DisplayApp.vue (динамический import); startSync()
   store.js         расписание: reactive state, debounce 300 мс → PUT, SSE; onServerEvent(type, fn) → отписка;
-                   getLessons/setLessonField, getChanges/setChangeField, hasChanges, maxLessonOfDay; saveStatus, connected
+                   getLessons/setLessonField, getChanges/setChangeField, changesActive(now) / hasChanges(now) (учитывают
+                   changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay; saveStatus, connected
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, dayNumber, takeCard; startDecks()
@@ -132,7 +133,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
 **schedule.json** — правится через сайт (PUT целиком):
 ```js
 { version: 1, updatedAt,                     // по updatedAt клиенты понимают, что данные новее
-  settings: { lessonsCount /* строк, 9 */, letters: { "5": ["А","Б"…] … }, changesCols, bells: [{ name, days, text }] },
+  settings: { lessonsCount /* строк, 9 */, changesDate /* 'ГГГГ-ММ-ДД' | '' — на какой день изменения; после него экран их не показывает */, letters: { "5": ["А","Б"…] … }, changesCols, bells: [{ name, days, text }] },
   schedule: { "<параллель>": { "<день 1..6>": { "<буква>": [ { s: предмет, r: кабинет } ] } } },
   changes:  { ch0: [ { c: класс, t: текст, r: кабинет } ], ch1, ch2 } }
 ```
@@ -211,5 +212,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.5 — кнопка «⧉» копирует слайд под исходным (`cloneSlide` в src/playlist.js: JSON-копия, новый id, `on: true`); у новости сразу открывается NewsEditor.
 - v0.8.6 — 6 новых тем для новостей и колод (`EXTRA_THEMES`/`ALL_THEMES`, server/themes.js); табло их не рисует.
 - v0.8.7 — анимация новости `anim` (NewsSlide: класс `run` ставится при active и не снимается; `preview` — по кругу; `NEWS_ANIMS` дублируется в server/playlist.js).
+- v0.8.8 — дата у изменений `settings.changesDate`: поле «Изменения на» + «сегодня/завтра» в редакторе, заголовок «ИЗМЕНЕНИЯ НА 14 ОКТЯБРЯ», после дня экран не показывает (плашка «Очистить» в редакторе). fit.js: замер ширины у flex-элементов с базой 0.
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
