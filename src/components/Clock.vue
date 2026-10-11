@@ -17,6 +17,7 @@ const minutes = computed(() => String(props.date.getMinutes()).padStart(2, '0'))
   font-variant-numeric: tabular-nums;
 }
 .colon {
+  margin: 0 0.05em;
   animation: colon-blink 1s ease-in-out infinite;
 }
 @keyframes colon-blink {
