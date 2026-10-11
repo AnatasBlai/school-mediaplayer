@@ -4,7 +4,7 @@
 // inStage — панель лежит внутри сцены SlideStage (новость, колода): без своего масштаба, справа на сцене.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { state, maxLessonOfDay } from '../store.js'
-import { bellsForDay, bellStatus, plural } from '../bells.js'
+import { bellsForDay, bellStatus } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
 import { vFit } from '../fit.js'
 
@@ -71,7 +71,6 @@ onBeforeUnmount(() => {
         <div v-if="changes.length" class="changes">
           <div class="ch-head">
             <span>Изменения</span>
-            <span class="ch-count">{{ changes.length }} {{ plural(changes.length, 'строка', 'строки', 'строк') }}</span>
           </div>
           <div v-for="(x, i) in shown" :key="i" class="ch-row">
             <span v-if="x.c" class="ch-cls">{{ x.c }}</span>
@@ -166,12 +165,6 @@ onBeforeUnmount(() => {
   font-size: 24px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-}
-.ch-count {
-  font-weight: 700;
-  font-size: 15px;
-  text-transform: none;
-  opacity: 0.8;
 }
 .ch-row {
   display: flex;
