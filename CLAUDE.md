@@ -98,6 +98,7 @@ src/
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
+  scheduleImport.js разбор таблицы из Excel (parseScheduleTable, без Vue); окно — admin/ScheduleImport.vue (кнопка в шапке AdminApp)
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
@@ -227,5 +228,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.12 — слайд «Обратный отсчёт» (`countdown`): CountdownSlide/CountdownEditor, `countdownState` в rules.js; без времени идёт весь день события, потом пропускается в `playable()`, в редакторе метка «событие прошло».
 - v0.8.13 — срочный режим `playlist.urgent`: кнопка ⚠ в строке слайда, красная плашка в «Плейлисте» и шапке, «Срочный режим» в «Сейчас на экране»; слайд удалён → режим сам выключается (клиент и `cleanUrgent` на сервере).
 - v0.8.14 — редизайн «Плейлиста»: инструменты слева (меню добавления, окно «Настройки экрана»), очередь справа, все настройки слайда в окне ⚙; ↑↓ убраны.
+- v0.8.15 — «Вставить из Excel» (src/scheduleImport.js + admin/ScheduleImport.vue): таблица одного дня → классы, предпросмотр, «Добавить букву», «Отменить» (копия в памяти окна; добавленные буквы остаются).
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

@@ -6,6 +6,7 @@ import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaLibrary from './MediaLibrary.vue'
 import PlaylistEditor from './PlaylistEditor.vue'
 import DeckEditor from './DeckEditor.vue'
+import ScheduleImport from './ScheduleImport.vue'
 import { playlist, startPlaylist } from '../playlist.js'
 import { startDecks } from '../decks.js'
 import './ui.css'
@@ -23,6 +24,7 @@ const SECTIONS = [
 ]
 const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'schedule')
 const section = ref(fromHash())
+const importOpen = ref(false) // окно «Вставить из Excel»
 function go(id) {
   section.value = id
   history.replaceState(null, '', id === 'schedule' ? location.pathname : '#' + id)
@@ -63,6 +65,7 @@ const status = computed(() => {
       <div class="hint">
         <template v-if="section === 'schedule'">Клик — выделить ячейку, второй клик или ввод — редактировать, Enter — сохранить</template>
       </div>
+      <button v-if="section === 'schedule'" class="open xl" @click="importOpen = true">Вставить из Excel</button>
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
@@ -75,6 +78,7 @@ const status = computed(() => {
       <DeckEditor v-else-if="section === 'decks'" />
       <MediaLibrary v-else-if="section === 'media'" />
     </main>
+    <ScheduleImport v-if="importOpen" @close="importOpen = false" />
   </div>
 </template>
 
@@ -159,6 +163,12 @@ const status = computed(() => {
   color: #fff;
   font-weight: 700;
   text-decoration: none;
+}
+.open.xl {
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 .open:hover {
   background: #4a505c;
