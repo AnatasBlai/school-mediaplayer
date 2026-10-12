@@ -13,7 +13,9 @@
 4. Если в задаче что-то неясно или противоречит этому файлу — спроси владельца, а не угадывай.
 5. Новое поле данных → сразу в три места: клиент (создание/нормализация), **сервер (`clean…` в server/*.js — иначе
    сервер молча выбросит поле)**, раздел «Данные» этого файла.
-6. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
+6. **Все записи — только после входа**: новый POST/PUT/PATCH/DELETE в API автоматически закрыт паролем (`isAllowed` в
+   server/auth.js); открытым без входа делай только если это отчёт/действие экрана — и впиши исключение туда.
+7. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
 
 ## Стек и запуск
 
@@ -89,6 +91,8 @@ server/
                    (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
   media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
   backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore; расписание раз в 10 мин
+  auth.js          пароль на редактор: isAllowed(req) (api.js вызывает до всех обработчиков; без входа запись → 401, GET открыт;
+                   исключения: POST /api/screens, POST /api/decks/<id>/take), /api/auth*, scrypt + сессии 30 дней (cookie tablo_session)
   screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
   main.js          /admin → admin/AdminApp.vue, иначе DisplayApp.vue (динамический import); startSync()
@@ -116,6 +120,8 @@ src/
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
   admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal, a-switch, a-chips, a-link, a-check…)
+    auth.js + AuthModals.vue  вход: window.fetch оборачивается (при 401 окно входа и повтор запроса), needLogin() для XHR
+                   (mediaApi.uploadMedia); кнопки «🔒 Пароль» / «Выйти» в шапке AdminApp
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
     PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд»), сводка «Настройки экрана»
                    (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
@@ -171,7 +177,8 @@ from > to — через полночь. Нет файла → плейлист 
 ```
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
-**backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
+**auth.json** `{ salt, hash }` (нет файла — пароля нет) и **sessions.json** `{ токен: expiresAt }` — пароль и входы; не в снимках копий
+(`isDataFile`) и не в архивах pack.mjs. **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
 ## Поведение, которое легко сломать
 
@@ -191,6 +198,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - **Синхронизация**: правка → PUT → SSE (`data`/`playlist`/`decks` с updatedAt) → клиенты со старым updatedAt делают GET.
   После обрыва EventSource переподключается сам и по `hello` догружает. Сменился `boot` → **экран** делает reload
   (так получает новую сборку). Восстанавливая данные «из прошлого», ставь свежий updatedAt — иначе клиенты не загрузят.
+- **Тесты с паролем**: на копии сервера задать пароль (`PUT /api/auth/password {current:"",next:"…"}` с cookie-jar), в
+  Playwright войти через окно или `POST /api/auth/login`. Лимит 5 неверных попыток/IP — в памяти, сброс перезапуском сервера.
 - Видео со звуком без клика — только с флагом браузера `--autoplay-policy=no-user-gesture-required` (есть в kiosk.ps1).
 - Резервные копии делает только `server.js` (не Vite). Сервер при автозапуске работает от SYSTEM.
 
@@ -229,5 +238,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.13 — срочный режим `playlist.urgent`: кнопка ⚠ в строке слайда, красная плашка в «Плейлисте» и шапке, «Срочный режим» в «Сейчас на экране»; слайд удалён → режим сам выключается (клиент и `cleanUrgent` на сервере).
 - v0.8.14 — редизайн «Плейлиста»: инструменты слева (меню добавления, окно «Настройки экрана»), очередь справа, все настройки слайда в окне ⚙; ↑↓ убраны.
 - v0.8.15 — «Вставить из Excel» (src/scheduleImport.js + admin/ScheduleImport.vue): таблица одного дня → классы, предпросмотр, «Добавить букву», «Отменить» (копия в памяти окна; добавленные буквы остаются).
+- v0.8.16 — пароль на редактор (server/auth.js, admin/auth.js + AuthModals.vue): записи без входа → 401, экран без пароля.
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

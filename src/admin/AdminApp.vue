@@ -9,8 +9,11 @@ import DeckEditor from './DeckEditor.vue'
 import ScheduleImport from './ScheduleImport.vue'
 import { playlist, startPlaylist } from '../playlist.js'
 import { startDecks } from '../decks.js'
+import AuthModals from './AuthModals.vue'
+import { auth, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
 
+checkAuth()
 // плейлист нужен и разделу «Плейлист», и медиатеке (предупреждение при удалении файла)
 startPlaylist()
 startDecks()
@@ -69,6 +72,8 @@ const status = computed(() => {
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
+      <button class="open xl" @click="auth.passOpen = true">🔒 Пароль</button>
+      <button v-if="auth.required" class="open xl" @click="logout">Выйти</button>
     </header>
     <main class="work">
       <div v-if="section === 'schedule'" class="board">
@@ -79,6 +84,7 @@ const status = computed(() => {
       <MediaLibrary v-else-if="section === 'media'" />
     </main>
     <ScheduleImport v-if="importOpen" @close="importOpen = false" />
+    <AuthModals />
   </div>
 </template>
 
@@ -95,8 +101,8 @@ const status = computed(() => {
   flex: 0 0 56px;
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 0 14px;
   background: #26292f;
   border-bottom: 1px solid #353943;
   font-size: 14px;
@@ -137,6 +143,9 @@ const status = computed(() => {
   font-weight: 600;
 }
 .status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 700;
   color: #c9ccd3;
@@ -156,6 +165,7 @@ const status = computed(() => {
   color: #ff8a7a;
 }
 .open {
+  flex: none;
   white-space: nowrap;
   padding: 8px 14px;
   border-radius: 8px;

@@ -6,6 +6,7 @@
 //   /api/decks*  — колоды карточек: факты, вопросы, загадки (server/decks.js)
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
+//   /api/auth*   — пароль на редактор; все записи без входа дают 401 (server/auth.js)
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,6 +16,7 @@ import { handlePlaylist } from './server/playlist.js'
 import { handleScreens } from './server/screens.js'
 import { handleDecks } from './server/decks.js'
 import { handleBackup } from './server/backup.js'
+import { isAllowed, handleAuth } from './server/auth.js'
 
 export { MIME } from './server/mime.js'
 
@@ -80,6 +82,13 @@ function handleData(req, res) {
 /** Возвращает true, если запрос обработан. */
 export function handleApi(req, res) {
   const url = (req.url || '').split('?')[0]
+  if (url.startsWith('/api/') && !isAllowed(req)) {
+    res.statusCode = 401
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end('{"ok":false,"error":"Нужен вход в редактор"}')
+    return true
+  }
+  if (handleAuth(req, res)) return true
   if (url === '/api/events') {
     openEvents(req, res)
     return true

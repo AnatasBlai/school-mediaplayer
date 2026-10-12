@@ -11,6 +11,8 @@ export const ACCEPT = [...IMAGE_EXT, ...VIDEO_EXT].join(',')
 const extOf = (name) => (name.match(/\.[^.]+$/)?.[0] || '').toLowerCase()
 const baseOf = (name) => name.replace(/\.[^.]+$/, '')
 
+import { needLogin } from './auth.js'
+
 export { mediaUrl, thumbUrl } from '../playlist.js'
 
 // ---------- форматирование ----------
@@ -144,21 +146,24 @@ export function uploadMedia(prepared, category, onProgress) {
     duration: prepared.duration || 0,
     category: category || '',
   })
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', '/api/media?' + q)
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total)
-    xhr.onload = () => {
-      let d = {}
-      try {
-        d = JSON.parse(xhr.responseText)
-      } catch {
-        /* пусто */
+  const attempt = () =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', '/api/media?' + q)
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total)
+      xhr.onload = () => {
+        let d = {}
+        try {
+          d = JSON.parse(xhr.responseText)
+        } catch {
+          /* пусто */
+        }
+        if (xhr.status === 401) return needLogin().then(() => resolve(attempt())) // вошли — отправляем заново
+        if (xhr.status === 200 && d.ok) resolve(d.item)
+        else reject(new Error(d.error || `Ошибка сервера (${xhr.status})`))
       }
-      if (xhr.status === 200 && d.ok) resolve(d.item)
-      else reject(new Error(d.error || `Ошибка сервера (${xhr.status})`))
-    }
-    xhr.onerror = () => reject(new Error('Нет связи с сервером'))
-    xhr.send(prepared.blob)
-  })
+      xhr.onerror = () => reject(new Error('Нет связи с сервером'))
+      xhr.send(prepared.blob)
+    })
+  return attempt()
 }
