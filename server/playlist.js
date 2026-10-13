@@ -20,7 +20,7 @@ const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
 const GRADES = ['5', '6', '7', '8', '9', '10', '11']
 
-/** Правила показа: период дат, время суток, дни недели (1 — Пн … 7 — Вс). Пусто — показывать всегда. */
+/** Правила показа: период дат, время суток, дни недели (1 — Пн … 7 — Вс), только на переменах. Пусто — показывать всегда. */
 function cleanWhen(w) {
   if (!w || typeof w !== 'object') return null
   const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '')
@@ -33,7 +33,8 @@ function cleanWhen(w) {
     timeTo: time(w.timeTo),
     days: days.length === 7 ? [] : days,
   }
-  return out.dateFrom || out.dateTo || out.timeFrom || out.timeTo || out.days.length ? out : null
+  if (w.breaks === true) out.breaks = true
+  return out.dateFrom || out.dateTo || out.timeFrom || out.timeTo || out.days.length || out.breaks ? out : null
 }
 
 /** Гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } — без дат, до 10 периодов. */

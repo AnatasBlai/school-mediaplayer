@@ -1,10 +1,11 @@
 // Правила показа слайда: when = { dateFrom, dateTo: 'ГГГГ-ММ-ДД', timeFrom, timeTo: 'ЧЧ:ММ', days: [1..7] }.
 // Пустое поле — без ограничения. Дни: 1 — понедельник … 7 — воскресенье, [] — каждый день.
 // Время до timeTo не включительно, даты — включительно. timeFrom > timeTo — интервал через полночь (22:00–06:00).
+// breaks: true — только во время перемены (между звонками сегодняшнего дня; проверяет функция isBreak(now) из store.js).
 // Проверяются по часам устройства, которое показывает страницу (как и звонки).
 
 export const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-export const EMPTY_WHEN = { dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', days: [] }
+export const EMPTY_WHEN = { dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', days: [], breaks: false }
 
 const pad = (n) => String(n).padStart(2, '0')
 const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -13,11 +14,14 @@ const fmtDate = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}${iso.slice(0, 4
 const fmtTime = (hhmm) => hhmm.replace(/^0(\d)/, '$1')
 
 export function hasRules(w) {
-  return !!w && !!(w.dateFrom || w.dateTo || w.timeFrom || w.timeTo || w.days?.length)
+  return !!w && !!(w.dateFrom || w.dateTo || w.timeFrom || w.timeTo || w.days?.length || w.breaks)
 }
 
-/** Подходит ли момент now под правила: { ok, reason } — reason объясняет, почему слайд сейчас не идёт. */
-export function ruleState(w, now = new Date()) {
+/**
+ * Подходит ли момент now под правила: { ok, reason } — reason объясняет, почему слайд сейчас не идёт.
+ * isBreak(now) — идёт ли перемена (нужна, только если в правилах breaks).
+ */
+export function ruleState(w, now = new Date(), isBreak = null) {
   if (!hasRules(w)) return { ok: true, reason: '' }
   const today = isoDate(now)
   if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return { ok: false, reason: 'дата «по» раньше даты «с»' }
@@ -32,6 +36,7 @@ export function ruleState(w, now = new Date()) {
     const inside = a <= b ? m >= a && m < b : m >= a || m < b
     if (!inside) return { ok: false, reason: 'не то время суток' }
   }
+  if (w.breaks && !isBreak?.(now)) return { ok: false, reason: 'сейчас не перемена' }
   return { ok: true, reason: '' }
 }
 
@@ -61,6 +66,7 @@ export function rulesText(w) {
     else if (d.join() === '6,7') parts.push('выходные')
     else parts.push(d.map((x) => DAY_SHORT[x - 1]).join(', '))
   }
+  if (w.breaks) parts.push('на переменах')
   return parts.join(' · ')
 }
 

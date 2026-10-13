@@ -2,7 +2,7 @@
 // Плейлист (/admin#playlist): что и в каком порядке показывает экран. Правки сохраняются сами.
 // Слева (30 %) — добавление слайдов, настройки экрана, «Сейчас на экране»; справа (70 %) — очередь слайдов.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { state, GRADES } from '../store.js'
+import { state, GRADES, isBreak } from '../store.js'
 import {
   playlist,
   playlistLoaded,
@@ -56,7 +56,7 @@ function secondsOf(it) {
 }
 /** Сколько в среднем идёт одна карточка колоды. */
 const deckSeconds = (it) => avgCardSeconds(deckById(it.deck))
-const ruleOk = (it) => ruleState(it.when, now.value).ok
+const ruleOk = (it) => ruleState(it.when, now.value, isBreak).ok
 // в круг сейчас входят включённые слайды, у которых правила подходят под текущий момент
 const total = computed(() => items.value.filter((it) => it.on && ruleOk(it) && !cdOver(it)).reduce((s, it) => s + secondsOf(it), 0))
 const enabledCount = computed(() => items.value.filter((it) => it.on).length)
@@ -324,7 +324,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               {{ SLIDE_TITLES[it.type] }}
               <span v-if="onScreenIds.has(it.id)" class="tag live">▶ на экране</span>
               <span v-else-if="it.on && cdOver(it)" class="tag wait">событие прошло</span>
-              <span v-else-if="it.on && !ruleOk(it)" class="tag wait">сейчас не идёт: {{ ruleState(it.when, now).reason }}</span>
+              <span v-else-if="it.on && !ruleOk(it)" class="tag wait">сейчас не идёт: {{ ruleState(it.when, now, isBreak).reason }}</span>
             </div>
             <div class="summary">
               <span>{{ summaryOf(it) }}</span>

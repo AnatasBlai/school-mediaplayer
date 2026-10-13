@@ -5,12 +5,12 @@
 //   next    — следующий, невидимый: фото/видео заранее грузятся, табло уже отрисовано.
 // Слайды расписания и изменений используют ОДНО табло (ключ 'board'): между ними нет затемнения,
 // табло само плавно меняет вкладку и тему.
-// Правила показа (даты, время, дни) проверяются по часам этого компьютера.
+// Правила показа (даты, время, дни, перемены по звонкам) проверяются по часам этого компьютера.
 // Фото, видео, новости, отсчёты и колоды идут по шаблону (layoutOf): на весь экран или с панелью справа —
 // панель рисует сам слайд (MediaSlide поверх превью, NewsSlide/DeckCard — внутри своей сцены).
 // О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { state, GRADES, hasChanges } from '../store.js'
+import { state, GRADES, hasChanges, isBreak } from '../store.js'
 import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist, layoutOf } from '../playlist.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
@@ -37,7 +37,7 @@ function boardTabs(it) {
 const now = ref(new Date())
 
 function playable(it) {
-  if (!it.on || !ruleState(it.when, now.value).ok) return false
+  if (!it.on || !ruleState(it.when, now.value, isBreak).ok) return false
   if (it.type === 'schedule') return boardTabs(it).length > 0
   if (it.type === 'changes') return !it.skipEmpty || hasChanges(now.value)
   if (it.type === 'news') return !!(it.title || it.text)

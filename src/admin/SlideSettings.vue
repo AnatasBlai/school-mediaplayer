@@ -1,7 +1,7 @@
 <script setup>
 // Окно настроек одного слайда плейлиста (кнопка ⚙ в строке): время показа, вид, шаблон, «Когда». Правки сохраняются сами.
 import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { GRADES } from '../store.js'
+import { GRADES, isBreak } from '../store.js'
 import { playlist, mediaById, slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout } from '../playlist.js'
 import { decks, deckById, avgCardSeconds } from '../decks.js'
 import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState } from '../rules.js'
@@ -53,7 +53,7 @@ function toggleDay(d) {
 function clearWhen() {
   delete it.value.when
 }
-const rule = computed(() => ruleState(it.value.when, props.now))
+const rule = computed(() => ruleState(it.value.when, props.now, isBreak))
 
 const onKey = (e) => e.key === 'Escape' && emit('close')
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -172,6 +172,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             </span>
             <button class="a-link" @click="setWhen('days', [1, 2, 3, 4, 5])">Пн–Пт</button>
             <span class="a-hint">ни один не выбран — каждый день</span>
+          </div>
+          <div class="rule">
+            <span class="rl">Звонки</span>
+            <label class="brk">
+              <span class="a-switch"><input type="checkbox" :checked="when.breaks" @change="setWhen('breaks', $event.target.checked)" /><span></span></span>
+              только во время перемены
+            </label>
+            <span class="a-hint">по звонкам из расписания и часам компьютера с экраном</span>
           </div>
           <div class="rule">
             <span class="rl"></span>
@@ -296,6 +304,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .rule .a-input {
   padding: 5px 8px;
   color-scheme: dark;
+}
+.brk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
 .rl {
   width: 56px;

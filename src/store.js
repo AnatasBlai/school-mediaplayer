@@ -1,5 +1,6 @@
 import { reactive, ref, watch } from 'vue'
 import { createDefaultData, GRADES } from './defaultData.js'
+import { bellsForDay, bellStatus } from './bells.js'
 
 const LS_KEY = 'shedule-data-v1'
 
@@ -258,3 +259,13 @@ export { GRADES }
 
 // стартовое значение «пробы», чтобы первая загрузка не считалась правкой
 lastProbe = probeOf()
+
+/**
+ * Идёт ли сейчас перемена: между звонками сегодняшнего дня (звонки — из настроек расписания, уроки — до последнего,
+ * который есть сегодня). До первого урока, после последнего и в воскресенье — не перемена.
+ */
+export function isBreak(now = new Date()) {
+  const dow = now.getDay()
+  if (dow === 0) return false
+  return bellStatus(bellsForDay(state.settings.bells, dow), now, maxLessonOfDay(dow)).kind === 'break'
+}

@@ -98,13 +98,13 @@ src/
   main.js          /admin → admin/AdminApp.vue, иначе DisplayApp.vue (динамический import); startSync()
   store.js         расписание: reactive state, debounce 300 мс → PUT, SSE; onServerEvent(type, fn) → отписка;
                    getLessons/setLessonField, getChanges/setChangeField, changesActive(now) / hasChanges(now) (учитывают
-                   changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay; saveStatus, connected
+                   changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay, isBreak(now) (kind 'break' у bellStatus); saveStatus, connected
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
   scheduleImport.js разбор таблицы из Excel (parseScheduleTable, без Vue); окно — admin/ScheduleImport.vue (кнопка в шапке AdminApp)
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
-  rules.js         ruleState(when, now), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
+  rules.js         ruleState(when, now, isBreak) (when.breaks → isBreak из store.js), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
                    и колоды); ALL_THEMES = оба; поля: bg-градиенты, base, accent, shadow, outline, tabText; themeBackground(t)
   bells.js         звонки: parseBells, bellsForDay, bellStatus (kind: none|before|lesson|break|after), fmt, plural
@@ -164,7 +164,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
     { id, type: 'news',     on, label, title, text, date, media?, fit, theme, anim /* none|zoom|drift|parallax|rise, нет → none */, duration },
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
   ] }
-// у image/video/news/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days }
+// у image/video/news/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
 ```
 id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
 from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
@@ -239,5 +239,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.14 — редизайн «Плейлиста»: инструменты слева (меню добавления, окно «Настройки экрана»), очередь справа, все настройки слайда в окне ⚙; ↑↓ убраны.
 - v0.8.15 — «Вставить из Excel» (src/scheduleImport.js + admin/ScheduleImport.vue): таблица одного дня → классы, предпросмотр, «Добавить букву», «Отменить» (копия в памяти окна; добавленные буквы остаются).
 - v0.8.16 — пароль на редактор (server/auth.js, admin/auth.js + AuthModals.vue): записи без входа → 401, экран без пароля.
+- v0.8.17 — «Когда» → «Звонки: только во время перемены» (`when.breaks`, `isBreak` в store.js по звонкам и maxLessonOfDay; до 1-го урока и после последнего — не перемена).
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.
