@@ -8,9 +8,14 @@ import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState } from '../rules.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
 
 const props = defineProps({ item: Object, now: Date }) // слайд из playlist.items — правим прямо его
-const emit = defineEmits(['close', 'copy', 'remove', 'edit']) // edit — открыть окно новости / отсчёта
+const emit = defineEmits(['close', 'copy', 'remove', 'edit']) // edit — открыть окно новости / победителей / отсчёта
 
 const it = computed(() => props.item)
+const EDIT_TEXT = {
+  news: 'Изменить новость: текст, фото, цвет',
+  winners: 'Изменить победителей: места, призёры, фото, цвет',
+  countdown: 'Изменить отсчёт: событие, дата, цвет',
+}
 const file = computed(() => (it.value.media ? mediaById(it.value.media) : null))
 
 function setDuration(v) {
@@ -69,6 +74,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else-if="it.type === 'schedule'">5–11</span>
           <span v-else-if="it.type === 'changes'">Изм.</span>
           <span v-else-if="it.type === 'news'">Нов.</span>
+          <span v-else-if="it.type === 'winners'">🏆</span>
           <span v-else-if="it.type === 'countdown'">⏳</span>
           <span v-else-if="it.type === 'deck'">?!</span>
         </div>
@@ -80,9 +86,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
 
       <div class="body">
-        <!-- новость и отсчёт правятся в своём окне -->
-        <div v-if="it.type === 'news' || it.type === 'countdown'" class="sec">
-          <button class="a-btn edit" @click="emit('edit')">✎ {{ it.type === 'news' ? 'Изменить новость: текст, фото, цвет' : 'Изменить отсчёт: событие, дата, цвет' }}</button>
+        <!-- новость, победители и отсчёт правятся в своём окне -->
+        <div v-if="EDIT_TEXT[it.type]" class="sec">
+          <button class="a-btn edit" @click="emit('edit')">✎ {{ EDIT_TEXT[it.type] }}</button>
         </div>
 
         <div class="sec">
@@ -96,7 +102,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </div>
           <div v-else class="val">
             <input type="number" class="a-input a-num" min="3" max="3600" :value="it.duration" @change="setDuration($event.target.value)" @keydown.enter="$event.target.blur()" />
-            {{ it.type === 'schedule' ? 'сек. на каждую параллель' : 'сек.' }}
+            {{ it.type === 'schedule' ? 'сек. на каждую параллель' : it.type === 'winners' ? 'сек. на каждый экран класса' : 'сек.' }}
           </div>
         </div>
 
@@ -250,6 +256,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.thumb.winners {
+  background: linear-gradient(135deg, #e0b030, #7a4a0c);
 }
 .thumb.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);

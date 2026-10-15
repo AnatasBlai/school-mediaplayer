@@ -3,13 +3,14 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { decks } from '../decks.js'
 
-const emit = defineEmits(['add']) // add(type, deckId?)  type: media | schedule | changes | news | countdown | deck
+const emit = defineEmits(['add']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | deck
 
 const KINDS = [
   { type: 'media', icon: '▣', title: 'Фото или видео', note: 'Файлы из медиатеки' },
   { type: 'schedule', icon: '5–11', title: 'Расписание', note: 'Табло уроков по параллелям' },
   { type: 'changes', icon: 'Изм.', title: 'Изменения', note: 'Замены в расписании' },
   { type: 'news', icon: 'Нов.', title: 'Новость', note: 'Заголовок, текст и фото' },
+  { type: 'winners', icon: '🏆', title: 'Победители', note: 'Пьедестал и призёры по классам' },
   { type: 'countdown', icon: '⏳', title: 'Обратный отсчёт', note: 'Сколько дней до события' },
 ]
 
@@ -163,6 +164,10 @@ onBeforeUnmount(() => {
 }
 .ico.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.ico.winners {
+  background: linear-gradient(135deg, #e0b030, #7a4a0c);
+  font-size: 16px;
 }
 .ico.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);

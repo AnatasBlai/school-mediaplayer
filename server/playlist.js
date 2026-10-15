@@ -14,7 +14,7 @@ const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
 const NEWS_ANIMS = ['none', 'zoom', 'drift', 'parallax', 'rise'] // дублирует NEWS_ANIMS в src/playlist.js
-const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'countdown', 'deck']
+const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'winners', 'countdown', 'deck']
 // шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
 const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
@@ -69,6 +69,17 @@ const newId = () => Date.now().toString(36) + crypto.randomBytes(2).toString('he
 const secs = (v, def) => Math.min(3600, Math.max(3, Math.round(Number(v)) || def))
 const str = (v, max) => String(v ?? '').trim().slice(0, max)
 
+/** Группа слайда «Победители»: название, 1–3 места (до 3 человек на место: ФИО и класс), призёры текстом. */
+function cleanGroup(g) {
+  const places = [0, 1, 2].map((i) => {
+    const list = (Array.isArray(g?.places?.[i]) ? g.places[i] : [])
+      .slice(0, 3)
+      .map((p) => ({ name: str(p?.name, 60), cls: str(p?.cls, 6) }))
+    return list.length ? list : [{ name: '', cls: '' }]
+  })
+  return { name: str(g?.name, 40), places, others: String(g?.others ?? '').slice(0, 3000) }
+}
+
 /** Приводит слайд к допустимому виду; null — выбросить. */
 function cleanItem(x) {
   if (!x || !TYPES.includes(x.type)) return null
@@ -94,6 +105,17 @@ function cleanItem(x) {
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
     it.duration = secs(x.duration, 15)
+  } else if (x.type === 'winners') {
+    // победители: оформление как у новости, вместо текста — группы (классы) с пьедесталом и призёрами
+    it.label = str(x.label, 40)
+    it.title = str(x.title, 100)
+    it.date = str(x.date, 40)
+    if (/^[a-z0-9]+$/.test(x.media || '')) it.media = x.media
+    it.fit = x.fit === 'contain' ? 'contain' : 'cover'
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
+    it.duration = secs(x.duration, 8) // секунд на один экран группы
+    it.groups = (Array.isArray(x.groups) ? x.groups : []).slice(0, 20).map(cleanGroup)
   } else if (x.type === 'countdown') {
     // обратный отсчёт: без даты слайд бессмыслен — выбрасываем
     if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date || '')) return null
@@ -176,14 +198,14 @@ function writePlaylist(p) {
   broadcast('playlist', { updatedAt: p.updatedAt })
 }
 
-/** Убирает из плейлиста слайды с удалённым файлом (у новости — только фото). Возвращает, сколько слайдов убрано. */
+/** Убирает из плейлиста слайды с удалённым файлом (у новости и победителей — только фото). Возвращает, сколько слайдов убрано. */
 export function removeMediaFromPlaylist(mediaId) {
   const p = readPlaylist()
   let touched = false
   const items = p.items.filter((it) => {
     if (it.media !== mediaId) return true
     touched = true
-    if (it.type !== 'news') return false
+    if (it.type !== 'news' && it.type !== 'winners') return false
     delete it.media
     return true
   })

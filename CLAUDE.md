@@ -86,7 +86,7 @@ server/
   themes.js        список ключей тем THEMES (общий для playlist.js и decks.js; дублирует src/themes.js)
   events.js        SSE /api/events: hello { boot }; broadcast(data|media|playlist|decks|screens|backup); ping 25 с
   playlist.js      GET/PUT /api/playlist; cleanItem/cleanWhen/cleanBlank/cleanLayout; TYPES, THEMES;
-                   removeMediaFromPlaylist(id) (фото/видео-слайд удаляется, у новости пропадает только фото)
+                   removeMediaFromPlaylist(id) (фото/видео-слайд удаляется, у новости и победителей пропадает только фото)
   decks.js         GET/PUT /api/decks (нет файла → STARTER_DECKS из starterDecks.js), POST /api/decks/<id>/take → { n }
                    (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
   media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
@@ -103,6 +103,8 @@ src/
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
   scheduleImport.js разбор таблицы из Excel (parseScheduleTable, без Vue); окно — admin/ScheduleImport.vue (кнопка в шапке AdminApp)
+  winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
+                   пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now, isBreak) (when.breaks → isBreak из store.js), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
@@ -117,6 +119,8 @@ src/
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
     CountdownSlide.vue  обратный отсчёт (число + слово через plural; < суток — «Уже сегодня!» / «Осталось 5 ч 20 мин»); состояние — countdownState в rules.js
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
+    WinnersSlide.vue победители: рамка/фото/анимации скопированы из NewsSlide (её не трогали); экраны групп по очереди,
+                   пьедестал 2–1–3, список призёров (шрифт 48→30 по замеру, под пьедесталом ≤ 36); превью — проп group
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
   admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal, a-switch, a-chips, a-link, a-check…)
@@ -127,7 +131,7 @@ src/
                    (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
                    компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
-    NewsEditor.vue окно новости с живым превью; CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
+    NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
   components/
@@ -163,8 +167,10 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs
     { id, type: 'countdown', on, title ≤60, date: 'ГГГГ-ММ-ДД' /* обязательна, иначе сервер выбросит */, time: 'ЧЧ:ММ'|'', note ≤120, theme, duration },
     { id, type: 'news',     on, label, title, text, date, media?, fit, theme, anim /* none|zoom|drift|parallax|rise, нет → none */, duration },
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
+    { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
+      { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
   ] }
-// у image/video/news/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
+// у image/video/news/winners/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
 ```
 id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
 from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
@@ -240,5 +246,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.15 — «Вставить из Excel» (src/scheduleImport.js + admin/ScheduleImport.vue): таблица одного дня → классы, предпросмотр, «Добавить букву», «Отменить» (копия в памяти окна; добавленные буквы остаются).
 - v0.8.16 — пароль на редактор (server/auth.js, admin/auth.js + AuthModals.vue): записи без входа → 401, экран без пароля.
 - v0.8.17 — «Когда» → «Звонки: только во время перемены» (`when.breaks`, `isBreak` в store.js по звонкам и maxLessonOfDay; до 1-го урока и после последнего — не перемена).
+
+- v0.8.18 — слайд «Победители» (`winners`): как новость, но классы по очереди — пьедестал 1–2–3 (пустое место тусклое, до 3 человек на место) и призёры; лишние — экраны «продолжение».
 
 Этап 9 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

@@ -16,6 +16,7 @@ import {
   LAYOUT_TITLES,
   hasLayout,
   layoutOf,
+  winnerScreensOf,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
 import { hasRules, ruleState, countdownState, rulesText, isBlanked, tickerTexts } from '../rules.js'
@@ -23,6 +24,7 @@ import { plural } from '../bells.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
 import NewsEditor from './NewsEditor.vue'
+import WinnersEditor from './WinnersEditor.vue'
 import CountdownEditor from './CountdownEditor.vue'
 import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
@@ -52,6 +54,7 @@ function secondsOf(it) {
   }
   if (it.type === 'video') return Math.round(fileOf(it)?.duration || 0)
   if (it.type === 'deck') return deckSeconds(it)
+  if (it.type === 'winners') return winnerScreensOf(it).length * it.duration
   return it.duration
 }
 /** Сколько в среднем идёт одна карточка колоды. */
@@ -74,6 +77,7 @@ function summaryOf(it) {
   const f = fileOf(it)
   if (it.type === 'video') p.push('до конца' + (f?.duration ? ` (${fmtDuration(f.duration)})` : ''))
   else if (it.type === 'deck') p.push(`≈ ${deckSeconds(it)} с карточка`)
+  else if (it.type === 'winners') p.push(`${winnerScreensOf(it).length} экр. × ${it.duration} с`)
   else p.push(it.type === 'schedule' ? `${it.duration} с на параллель` : `${it.duration} с`)
   if (it.type === 'changes' && it.skipEmpty) p.push('пропускается, если изменений нет')
   if (it.type === 'image' || it.type === 'video') p.push(it.fit === 'contain' ? 'целиком' : 'заполнить')
@@ -83,7 +87,8 @@ function summaryOf(it) {
   return p.join(' · ')
 }
 /** Текст новости / подпись отсчёта — хвостом сводки. */
-const snippetOf = (it) => (it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : '')
+const snippetOf = (it) =>
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const screenTab = ref('') // '' — окно закрыто; layout | blank | ticker
@@ -104,17 +109,19 @@ function settingsEdit() {
   const it = setItem.value
   setId.value = ''
   if (it?.type === 'news') newsEdit.value = it
+  if (it?.type === 'winners') winEdit.value = it
   if (it?.type === 'countdown') cdEdit.value = it
 }
 
 function remove(i) {
   playlist.items.splice(i, 1)
 }
-// копия сразу под исходной строкой; новость открывается на правку
+// копия сразу под исходной строкой; новость, победители и отсчёт открываются на правку
 function copySlide(i) {
   const copy = cloneSlide(playlist.items[i])
   playlist.items.splice(i + 1, 0, copy)
   if (copy.type === 'news') newsEdit.value = playlist.items[i + 1]
+  if (copy.type === 'winners') winEdit.value = playlist.items[i + 1]
   if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
 }
 function settingsCopy() {
@@ -164,6 +171,7 @@ function onDragEnd() {
 function onAdd(type, deck) {
   if (type === 'media') openPicker()
   else if (type === 'news') addNews()
+  else if (type === 'winners') addWinners()
   else if (type === 'countdown') addCountdown()
   else if (type === 'deck') playlist.items.push(makeSlide('deck', deck))
   else playlist.items.push(makeSlide(type))
@@ -179,6 +187,21 @@ function closeNews() {
   const it = newsEdit.value
   newsEdit.value = null
   if (it && !it.title && !it.text && !it.media) {
+    const i = playlist.items.indexOf(it)
+    if (i >= 0) playlist.items.splice(i, 1)
+  }
+}
+
+// победители: окно правки, как у новости; пустой слайд при закрытии убираем
+const winEdit = ref(null)
+function addWinners() {
+  playlist.items.push(makeSlide('winners'))
+  winEdit.value = playlist.items[playlist.items.length - 1]
+}
+function closeWinners() {
+  const it = winEdit.value
+  winEdit.value = null
+  if (it && !it.title && !it.media && !winnerScreensOf(it).length) {
     const i = playlist.items.indexOf(it)
     if (i >= 0) playlist.items.splice(i, 1)
   }
@@ -312,6 +335,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'schedule'">5–11</span>
             <span v-else-if="it.type === 'changes'">Изм.</span>
             <span v-else-if="it.type === 'news'">Новость</span>
+            <span v-else-if="it.type === 'winners'">🏆</span>
             <span v-else-if="it.type === 'countdown'">⏳</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
@@ -358,6 +382,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       @edit="settingsEdit"
     />
     <NewsEditor v-if="newsEdit" :item="newsEdit" @close="closeNews" />
+    <WinnersEditor v-if="winEdit" :item="winEdit" @close="closeWinners" />
     <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
 
     <!-- выбор файлов из медиатеки -->
@@ -637,6 +662,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);
+  font-size: 22px;
+}
+.thumb.winners {
+  background: linear-gradient(135deg, #e0b030, #7a4a0c);
   font-size: 22px;
 }
 .thumb.deck {

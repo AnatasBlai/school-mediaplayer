@@ -45,7 +45,7 @@ function view(s) {
     tab,
     urgent,
     thumb: file ? thumbUrl(file) : '',
-    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'countdown' ? '⏳' : '',
+    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'winners' && !file ? '🏆' : sl.type === 'countdown' ? '⏳' : '',
     cls: sl.type,
     num: item ? playlist.items.indexOf(item) + 1 : 0,
   }
@@ -131,6 +131,9 @@ function view(s) {
 }
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
+}
+.thumb.winners {
+  background: linear-gradient(135deg, #e0b030, #7a4a0c);
 }
 .thumb.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);
