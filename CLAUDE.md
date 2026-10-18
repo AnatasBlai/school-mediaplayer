@@ -29,7 +29,8 @@
   - `kiosk.bat` / `kiosk-stop.bat` (tools/kiosk.ps1, настройки `kiosk-settings.txt`) — Яндекс.Браузер в киоск-режиме;
   - `autostart-install.bat` / `autostart-remove.bat` (tools/autostart.ps1) — задания планировщика «Tablo - server»
     (SYSTEM, при включении ПК) и «Tablo - kiosk» (при входе пользователя).
-- Git: локальный, ветка `main`. Не в git: `node_modules/ dist/ data/ media/ release/ *.zip`.
+- Git: ветка `main`, копия — приватный GitLab `origin` https://git.a2-dev.ru/Samat/school-mediaplayer (CI/runner
+  не включать: runner на чужом хостинге). Не в git: `node_modules/ dist/ data/ media/ release/ *.zip`.
 
 ## Порядок работы (каждая правка)
 
@@ -44,6 +45,7 @@
 7. Версия: поднять в `package.json`, коммит по-русски («Табло: мигающее двоеточие в часах (v0.8.3)»), тег.
    Коммитить и ставить теги владелец разрешил. **Версия**: `v0.<этап>.<правка>`; текущий этап — 8 (доработки),
    каждая задача — следующая правка: посмотри последний тег (`git tag --sort=-v:refname | head -1`) и прибавь 1.
+   Затем `git push && git push origin --tags` — копия в GitLab (вход запомнен в Windows; ошибка → сказать владельцу).
 8. Коротко отчитайся владельцу: что сделано, как проверено, что осталось непроверенным.
 
 ## Проверка в браузере
