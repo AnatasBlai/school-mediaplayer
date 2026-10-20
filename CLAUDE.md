@@ -124,6 +124,7 @@ src/
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
   dataDiff.js      diffSchedule/diffPlaylist/diffDecks/diffMedia(a=текущее, b=снимок) → строки по-человечески, limitLines (≤30); без Vue — для окна admin/RestorePreview.vue (возврат из копии) и будущего журнала правок
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
+  classMarks.js    parseClassList/changedClasses/sortChangeRows — классы в строках изменений («8А, 8Б», «8АБ», «9 классы»), без Vue; плашка «ИЗМ.» в EditColumn (проп marked), кнопка «Упорядочить» → sortChanges() в store.js
   rules.js         ruleState(when, now, isBreak) (when.breaks → isBreak из store.js), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
                    и колоды); ALL_THEMES = оба; поля: bg-градиенты, base, accent, shadow, outline, tabText; themeBackground(t)
@@ -228,6 +229,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
   InfoPanel поверх фото/видео: ширина `calc(100vh * 440 / 1080)`.
 - Подписи «5А» — обводка SVG-фильтром `#outline`, не `-webkit-text-stroke` (у Montserrat артефакты).
 - Длинный текст в ячейках ужимает `v-fit`; текст изменений — максимум 2 строки.
+- **Плашка «ИЗМ.»** (ScheduleBoard `markedClasses`): сравнивает `changesDate` (пусто — сегодня) с `shownYmd` — датой дня, который реально показан (после dayKey: выходной/после уроков сдвигают), не с датой «сейчас».
 - **Слабый ПК**: без тяжёлых `filter: blur` на больших слоях и бесконечных анимаций на многих элементах; анимировать
   только `transform` и `opacity`.
 - **Синхронизация**: правка → PUT → SSE (`data`/`playlist`/`decks` с updatedAt) → клиенты со старым updatedAt делают GET.
@@ -312,5 +314,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.10.1 — шаблоны слайдов: меню «Из шаблона» (6 встроенных + свои), `playlist.templates`, `cleanTemplates`, при удалении фото из медиатеки шаблон остаётся без фото.
 
 - v0.10.2 — календарь показов: окно недели по слайдам, гашению и срочному режиму (ShowCalendar.vue, `dayShows` в rules.js + тест).
+- v0.10.3 — плашка «ИЗМ.» над колонкой класса с изменениями на показанный день, «Упорядочить по классам» во вкладке «Изм.» (src/classMarks.js + тест).
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

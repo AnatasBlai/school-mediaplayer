@@ -2,6 +2,7 @@ import { reactive, ref, watch } from 'vue'
 import { createDefaultData, GRADES } from './defaultData.js'
 import { bellsForDay, bellStatus } from './bells.js'
 import { makeSaver } from './saver.js'
+import { sortChangeRows } from './classMarks.js'
 
 const LS_KEY = 'shedule-data-v1'
 
@@ -231,6 +232,16 @@ export function hasChanges(now = new Date()) {
 }
 
 export { ymd }
+
+/** «Упорядочить по классам»: сортирует строки в каждой колонке изменений. */
+export function sortChanges() {
+  for (const col of Object.keys(state.changes || {})) {
+    const arr = state.changes[col] || []
+    state.changes[col] = sortChangeRows(arr, state.settings.letters)
+    const empty = (x) => !x.c && !x.t && !x.r
+    while (state.changes[col].length && empty(state.changes[col][state.changes[col].length - 1])) state.changes[col].pop()
+  }
+}
 
 export function clearChanges() {
   state.changes = { ch0: [], ch1: [], ch2: [] }

@@ -22,8 +22,10 @@ import {
   changesActive,
   hasChangeRows,
   clearChanges,
+  sortChanges,
   ymd,
 } from '../store.js'
+import { changedClasses } from '../classMarks.js'
 import { ui, clearSelection } from '../ui.js'
 import { THEMES, themeBackground } from '../themes.js'
 import { bellsForDay, bellStatus } from '../bells.js'
@@ -73,6 +75,18 @@ const dayKey = computed(() => {
     }
   }
   return d === 0 ? 1 : d
+})
+// календарная дата дня, который показывает табло (по dayKey: воскресенье → понедельник и т. д.)
+const shownYmd = computed(() => {
+  const d = new Date(viewDate.value)
+  d.setDate(d.getDate() + ((dayKey.value - d.getDay() + 7) % 7))
+  return ymd(d)
+})
+// классы, которым надо поставить «ИЗМ.»: изменения относятся именно к показанному дню
+const markedClasses = computed(() => {
+  if (isChanges.value || !changesActive(now.value) || !hasChangeRows()) return new Set()
+  if ((state.settings.changesDate || ymd(now.value)) !== shownYmd.value) return new Set()
+  return changedClasses(state.changes, state.settings.letters)
 })
 // показан не сегодняшний день недели (воскресенье или день без уроков) — подписываем
 const DAY_NAMES = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
@@ -450,6 +464,7 @@ onBeforeUnmount(() => {
               <button @click="setChangesDate(0)">сегодня</button>
               <button @click="setChangesDate(1)">завтра</button>
               <button v-if="state.settings.changesDate" @click="state.settings.changesDate = ''">без даты</button>
+              <button title="Строки по порядку классов: 5А, 5Б, 6А…" @click="sortChanges()">Упорядочить по классам</button>
               <span v-if="staleChanges" class="stale">
                 Эти изменения на {{ staleText }} — день прошёл, на экране они не показываются.
                 <button @click="clearChanges()">Очистить</button>
@@ -462,6 +477,7 @@ onBeforeUnmount(() => {
                   :key="c.key"
                   :col-key="c.key"
                   :label="c.label"
+                  :marked="markedClasses.has(c.label)"
                   :rows="c.rows"
                   :fields="c.fields"
                   :now-idx="isChanges ? -1 : nowIdx"

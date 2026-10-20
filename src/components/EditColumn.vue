@@ -8,6 +8,7 @@ import { vFit } from '../fit.js'
 const props = defineProps({
   colKey: String, // ключ колонки: буква класса или ch0/ch1/ch2
   label: String, // крупная подпись внизу («5А»), может быть пустой
+  marked: { type: Boolean, default: false }, // у класса есть изменения — плашка «ИЗМ.» сверху колонки
   rows: Array,
   // поля строки: { k, cls, ph, max, grow }
   fields: Array,
@@ -63,6 +64,7 @@ function onBlur(e) {
 
 <template>
   <div class="column" :class="{ 'no-label': !label }">
+    <div v-if="marked" class="chg-badge" title="Есть изменения — смотрите вкладку «Изм.»">ИЗМ.</div>
     <div class="cells">
       <div
         v-for="(row, idx) in rows"
@@ -139,6 +141,25 @@ function onBlur(e) {
 }
 .column.no-label {
   padding-bottom: 16px;
+}
+
+/* плашка «ИЗМ.» — отдельный элемент поверх верхнего края колонки, подпись класса не трогает */
+.chg-badge {
+  position: absolute;
+  top: -15px;
+  right: 26px;
+  z-index: 3;
+  padding: 3px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  color: #1a1a1a;
+  font-weight: 900;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-shadow: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .cells {
