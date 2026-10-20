@@ -105,6 +105,11 @@ const tickerText = computed(() => {
 // храним id, а не сам объект: после загрузки с сервера объекты слайдов новые
 const setId = ref('')
 const setItem = computed(() => items.value.find((x) => x.id === setId.value) || null)
+// «Сейчас на экране»: клик по блоку открывает экран; нажатия на кнопки и ссылки внутри — не считаются
+function openScreen(e) {
+  if (e.target.closest('button, a')) return
+  window.open('/', '_blank')
+}
 function settingsEdit() {
   const it = setItem.value
   setId.value = ''
@@ -282,8 +287,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </button>
       </div>
 
-      <div class="card">
-        <div class="card-head"><b>Сейчас на экране</b></div>
+      <!-- клик по блоку открывает экран в новой вкладке (кнопки внутри — свои действия) -->
+      <div class="card now-card" data-ro-allow title="Открыть экран в новой вкладке" @click="openScreen">
+        <div class="card-head"><b>Сейчас на экране</b><span class="open-hint">Открыть экран ↗</span></div>
         <NowOnScreen />
       </div>
     </aside>
@@ -455,6 +461,18 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   padding: 12px;
   border-radius: 12px;
   background: #22252b;
+}
+.now-card {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.now-card:hover {
+  border-color: #3d7be0;
+}
+.open-hint {
+  color: #7fb0ff;
+  font-size: 13px;
+  font-weight: 700;
 }
 .card-head {
   display: flex;

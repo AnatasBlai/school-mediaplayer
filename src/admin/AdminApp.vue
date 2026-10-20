@@ -17,7 +17,9 @@ import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
 import UsersModal from './UsersModal.vue'
 import JournalModal from './JournalModal.vue'
-import { auth, can, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
+import HeaderMenu from './HeaderMenu.vue'
+import { icon } from './icons.js'
+import { auth, can, checkAuth } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
 
 checkAuth()
@@ -43,10 +45,25 @@ const readonly = computed(() => !can(section.value))
 const BLOCKED = ['click', 'dblclick', 'mousedown', 'keydown', 'keypress', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop', 'dragstart', 'contextmenu']
 function guard(e) {
   if (!readonly.value || (e.type === 'keydown' && e.key === 'Tab')) return
+  // «Открыть экран» в «Сейчас на экране» работает и без права на раздел (data-ro-allow), прочие кнопки там — нет
+  const ctl = e.target.closest?.('button, a, input')
+  if (e.target.closest?.('[data-ro-allow]') && (!ctl || ctl.hasAttribute('data-ro-allow'))) return
   e.stopPropagation()
   e.preventDefault()
 }
-const SYS_TITLE = { ok: 'Всё хорошо', warn: 'Есть предупреждения', bad: 'Есть ошибки' }
+// вид кнопок разделов: text — надписи, icons — иконки, both — иконки + надписи; помнится в этом браузере
+const NAV_VIEW_KEY = 'tablo-nav-view'
+const navView = ref('both')
+try {
+  const v = localStorage.getItem(NAV_VIEW_KEY)
+  if (['text', 'icons', 'both'].includes(v)) navView.value = v
+} catch {}
+function setNavView(v) {
+  navView.value = v
+  try {
+    localStorage.setItem(NAV_VIEW_KEY, v)
+  } catch {}
+}
 function go(id) {
   section.value = id
   history.replaceState(null, '', id === 'schedule' ? location.pathname : '#' + id)
@@ -85,7 +102,7 @@ const status = computed(() => {
   if (!connected.value || saveStatus.value === 'offline')
     return { cls: 'bad', text: 'Нет связи с сервером — правки сохранятся только в этом браузере' }
   if (saveStatus.value === 'saving') return { cls: '', text: 'Сохранение…' }
-  if (saveStatus.value === 'saved') return { cls: 'ok', text: 'Сохранено, экраны обновлены' }
+  if (saveStatus.value === 'saved') return { cls: 'ok', text: 'Сохранено' }
   return { cls: '', text: '' }
 })
 </script>
@@ -93,10 +110,22 @@ const status = computed(() => {
 <template>
   <div class="admin">
     <header class="bar">
-      <div class="brand">Управление экранами</div>
-      <nav class="nav">
-        <button v-for="s in SECTIONS" :key="s.id" class="nav-btn" :class="{ on: section === s.id }" @click="go(s.id)">
-          {{ s.title }}
+      <div class="brand">
+        <b>12 Кадр</b>
+        <span>медиаплеер</span>
+      </div>
+      <nav class="nav" :class="navView">
+        <button
+          v-for="s in SECTIONS"
+          :key="s.id"
+          class="nav-btn"
+          :class="{ on: section === s.id }"
+          :title="navView === 'icons' ? s.title : undefined"
+          :aria-label="s.title"
+          @click="go(s.id)"
+        >
+          <span v-if="navView !== 'text'" class="ico" v-html="icon(s.id)"></span>
+          <span v-if="navView !== 'icons'">{{ s.title }}</span>
         </button>
       </nav>
       <div class="hint">
@@ -106,18 +135,8 @@ const status = computed(() => {
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <button v-if="silentText" class="silent" :title="silentText + ' — показать «Сейчас на экране»'" @click="goScreens">⚠ {{ silentText }}</button>
       <div class="status" :class="status.cls">{{ status.text }}</div>
-      <a class="open" href="/" target="_blank">Открыть экран ↗</a>
-      <button v-if="!auth.required || auth.user" class="open xl" @click="journalOpen = true">Журнал</button>
-      <button class="open xl" @click="statusOpen = true">
-        <span v-if="sysLevel" class="sdot" :class="sysLevel" :title="SYS_TITLE[sysLevel]"></span>Состояние
-      </button>
-      <button v-if="!auth.required" class="open xl" @click="auth.setupOpen = true">🔒 Создать администратора</button>
-      <template v-else-if="auth.user">
-        <span class="who" :title="auth.user.login">{{ auth.user.name }}</span>
-        <button v-if="can('admin')" class="open xl" @click="auth.usersOpen = true">Пользователи</button>
-        <button class="open xl" @click="auth.passOpen = true">Мой пароль</button>
-        <button class="open xl" @click="logout">Выйти</button>
-      </template>
+      <span v-if="auth.required && auth.user" class="who" :title="auth.user.login">{{ auth.user.name }}</span>
+      <HeaderMenu :nav-view="navView" :sys-level="sysLevel" @update:nav-view="setNavView" @journal="journalOpen = true" @status="statusOpen = true" />
     </header>
     <div v-if="syncNotice" class="sync-note" :class="{ err: syncNotice.error }" role="status">{{ syncNotice.text }}</div>
     <div v-if="readonly" class="ro-note" role="status">Вы можете только смотреть этот раздел</div>
@@ -158,15 +177,29 @@ const status = computed(() => {
   font-size: 14px;
 }
 .brand {
-  font-weight: 800;
-  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
   white-space: nowrap;
+}
+.brand b {
+  font-weight: 900;
+  font-size: 18px;
+}
+.brand span {
+  color: #8b909a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 .nav {
   display: flex;
   gap: 6px;
 }
 .nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
@@ -182,6 +215,13 @@ const status = computed(() => {
 .nav-btn.on {
   background: #3b404a;
   color: #fff;
+}
+.nav-btn .ico {
+  display: inline-grid;
+  place-items: center;
+}
+.nav.icons .nav-btn {
+  padding: 8px 10px;
 }
 .hint {
   flex: 1;
@@ -261,20 +301,6 @@ const status = computed(() => {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-}
-.sdot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 8px;
-  border-radius: 50%;
-  background: #4cc26a;
-}
-.sdot.warn {
-  background: #e8b630;
-}
-.sdot.bad {
-  background: #e5503f;
 }
 .open:hover {
   background: #4a505c;

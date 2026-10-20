@@ -16,7 +16,7 @@ const isAdmin = /^\/admin(\/|$)/.test(location.pathname)
 async function boot() {
   let App
   if (isAdmin) {
-    document.title = 'Редактор экранов'
+    document.title = '12 Кадр'
     App = (await import('./admin/AdminApp.vue')).default
   } else {
     document.title = 'Экран'

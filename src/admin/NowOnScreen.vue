@@ -51,7 +51,8 @@ function view(s) {
 <template>
   <div id="now-on-screen" class="now">
     <div v-if="screens.loaded && !list.length" class="none">
-      Экраны пока не на связи. Откройте экран (кнопка «Открыть экран ↗») — он появится здесь.
+      Экраны пока не на связи. Откройте экран — он появится здесь.
+      <a class="open" href="/" target="_blank" data-ro-allow>Открыть экран ↗</a>
     </div>
     <div v-for="s in list" :key="s.id" class="scr" :class="{ offline: !s.online }">
       <div class="thumb" :class="view(s).cls">
@@ -88,11 +89,26 @@ function view(s) {
   gap: 8px;
 }
 .none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
   background: #1d1f24;
   color: #a4a9b3;
   font-weight: 600;
+}
+.open {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #3d7be0;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.open:hover {
+  background: #4a8af0;
 }
 .scr {
   display: flex;
