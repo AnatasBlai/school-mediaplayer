@@ -435,7 +435,11 @@ onBeforeUnmount(() => {
         <!-- ОСНОВНАЯ ЧАСТЬ -->
         <main class="body">
           <section class="schedule" :style="sizes">
-            <div v-if="shiftNote && !isChanges" class="note">{{ shiftNote }}</div>
+            <!-- после уроков — крупная плашка: календарь справа ещё показывает сегодняшний день, не перепутать -->
+            <div v-if="shiftNote && !isChanges && afterLessons" class="after-note">
+              Уроки закончились — расписание на <b>{{ DAY_ACC[dayKey] }}</b>
+            </div>
+            <div v-else-if="shiftNote && !isChanges" class="note">{{ shiftNote }}</div>
             <div v-if="editable && isChanges" class="date-bar" @mousedown.stop>
               <label>
                 Изменения на:
@@ -700,6 +704,25 @@ onBeforeUnmount(() => {
   font-weight: 700;
   font-size: 16px;
   white-space: nowrap;
+}
+.after-note {
+  flex: 0 0 auto;
+  margin-bottom: 14px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--glass-border);
+  text-align: center;
+  font-weight: 800;
+  font-size: 38px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: var(--shadow-text);
+}
+.after-note b {
+  font-weight: 900;
+  color: var(--accent);
 }
 .empty-grade {
   flex: 1;
