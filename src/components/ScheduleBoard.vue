@@ -61,10 +61,12 @@ const picked = ref(null) // null — показываем сегодня
 const viewDate = computed(() => picked.value || now.value)
 const viewingToday = computed(() => !picked.value)
 // день расписания 1..6. В воскресенье — понедельник. На экране (не в редакторе), если сегодня уроков нет
-// ни у одного класса (например, суббота при пятидневке), — ближайший следующий день, где уроки есть.
+// ни у одного класса (например, суббота при пятидневке) или уроки уже закончились (после последнего звонка), —
+// ближайший следующий день, где уроки есть.
+const afterLessons = computed(() => !props.editable && viewingToday.value && maxLessonOfDay(viewDate.value.getDay()) > 0 && bell.value.kind === 'after')
 const dayKey = computed(() => {
   const d = viewDate.value.getDay()
-  if (!props.editable && viewingToday.value && maxLessonOfDay(d) === 0) {
+  if (!props.editable && viewingToday.value && (maxLessonOfDay(d) === 0 || afterLessons.value)) {
     for (let k = 1; k <= 6; k++) {
       const n = ((d + k - 1) % 7) + 1 // следующие дни по кругу: 1..7, где 7 — воскресенье
       if (n !== 7 && maxLessonOfDay(n) > 0) return n
@@ -78,6 +80,7 @@ const DAY_ACC = ['', 'понедельник', 'вторник', 'среду', '
 const shiftNote = computed(() => {
   const d = viewDate.value.getDay()
   if (dayKey.value === d) return ''
+  if (afterLessons.value) return `Уроки закончились — расписание на ${DAY_ACC[dayKey.value]}`
   const why = d === 0 ? DAY_NAMES[0] : `${DAY_NAMES[d]}: уроков нет`
   return `${why} — показано расписание на ${DAY_ACC[dayKey.value]}`
 })
