@@ -9,6 +9,8 @@ import DeckEditor from './DeckEditor.vue'
 import ScheduleImport from './ScheduleImport.vue'
 import { playlist, startPlaylist } from '../playlist.js'
 import { startDecks } from '../decks.js'
+import SystemStatus from './SystemStatus.vue'
+import { level as sysLevel, startStatus } from './systemStatus.js'
 import AuthModals from './AuthModals.vue'
 import { auth, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
@@ -17,6 +19,7 @@ checkAuth()
 // плейлист нужен и разделу «Плейлист», и медиатеке (предупреждение при удалении файла)
 startPlaylist()
 startDecks()
+startStatus()
 
 // разделы редактора; текущий хранится в адресе (/admin#media), чтобы переживать обновление страницы
 const SECTIONS = [
@@ -28,6 +31,8 @@ const SECTIONS = [
 const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? location.hash.slice(1) : 'schedule')
 const section = ref(fromHash())
 const importOpen = ref(false) // окно «Вставить из Excel»
+const statusOpen = ref(false) // окно «Состояние системы»
+const SYS_TITLE = { ok: 'Всё хорошо', warn: 'Есть предупреждения', bad: 'Есть ошибки' }
 function go(id) {
   section.value = id
   history.replaceState(null, '', id === 'schedule' ? location.pathname : '#' + id)
@@ -72,6 +77,9 @@ const status = computed(() => {
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
+      <button class="open xl" @click="statusOpen = true">
+        <span v-if="sysLevel" class="sdot" :class="sysLevel" :title="SYS_TITLE[sysLevel]"></span>Состояние
+      </button>
       <button class="open xl" @click="auth.passOpen = true">🔒 Пароль</button>
       <button v-if="auth.required" class="open xl" @click="logout">Выйти</button>
     </header>
@@ -84,6 +92,7 @@ const status = computed(() => {
       <MediaLibrary v-else-if="section === 'media'" />
     </main>
     <ScheduleImport v-if="importOpen" @close="importOpen = false" />
+    <SystemStatus v-if="statusOpen" @close="statusOpen = false" />
     <AuthModals />
   </div>
 </template>
@@ -180,6 +189,20 @@ const status = computed(() => {
   font-weight: 700;
   cursor: pointer;
 }
+.sdot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #4cc26a;
+}
+.sdot.warn {
+  background: #e8b630;
+}
+.sdot.bad {
+  background: #e5503f;
+}
 .open:hover {
   background: #4a505c;
 }
@@ -194,5 +217,15 @@ const status = computed(() => {
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
+}
+@media (max-width: 1400px) {
+  .bar {
+    gap: 6px;
+    padding: 0 8px;
+  }
+  .open,
+  .nav-btn {
+    padding: 8px 10px;
+  }
 }
 </style>

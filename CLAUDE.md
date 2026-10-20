@@ -98,6 +98,7 @@ server/
   backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore; расписание раз в 10 мин
   auth.js          пароль на редактор: isAllowed(req) (api.js вызывает до всех обработчиков; без входа запись → 401, GET открыт;
                    исключения: POST /api/screens, POST /api/decks/<id>/take), /api/auth*, scrypt + сессии 30 дней (cookie tablo_session)
+  status.js        GET /api/status — версия, время работы, диск (diskSpace из backup.js), объём data/media, backupSummary(), пароль; без секретов
   screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
   main.js          /admin → admin/AdminApp.vue, иначе DisplayApp.vue (динамический import); startSync()
@@ -139,6 +140,7 @@ src/
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
+    SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
     NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
   components/
     ScheduleBoard.vue табло 1920×1080: вкладки 5…11 + «Изм.», колонки, звонки, клавиатура редактора. Пропсы editable,
@@ -264,5 +266,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.23 — `npm run smoke` (tools/smoke.mjs): копия сервера во временной папке, обход экрана и редактора в Chromium, итоговая таблица, код выхода 0/1.
 
 - v0.8.24 — общие списки ключей в `src/catalog.js` (server/themes.js удалён), тест `tests/catalog.test.js`; catalog.js в pack.mjs и smoke.mjs.
+
+Сделано в этапе 9:
+- v0.9.0 — окно «Состояние системы» (`/api/status`, server/status.js; SystemStatus.vue): диск, копии, экраны, часы, пароль, точка в шапке.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

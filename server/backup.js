@@ -94,7 +94,7 @@ function existingAncestor(dir) {
   }
   return d
 }
-async function diskSpace(dir) {
+export async function diskSpace(dir) {
   try {
     const d = existingAncestor(dir)
     if (!d) return null
@@ -105,7 +105,7 @@ async function diskSpace(dir) {
   }
 }
 
-async function folderSize(dir) {
+export async function folderSize(dir) {
   let files = 0
   let bytes = 0
   async function walk(d) {
@@ -392,6 +392,12 @@ function readBody(req) {
       }
     })
   })
+}
+
+/** Кратко для окна «Состояние системы»: период, последняя удачная копия и итог последней попытки. */
+export function backupSummary() {
+  const s = load()
+  return { period: s.period, dir: !!s.dir, periodMs: PERIODS[s.period], lastAt: s.lastAt, last: s.last, lastError }
 }
 
 async function status() {

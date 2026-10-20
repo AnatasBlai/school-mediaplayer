@@ -6,6 +6,7 @@
 //   /api/decks*  — колоды карточек: факты, вопросы, загадки (server/decks.js)
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
+//   /api/status  — состояние системы: диск, копии, версия (server/status.js)
 //   /api/auth*   — пароль на редактор; все записи без входа дают 401 (server/auth.js)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,6 +17,7 @@ import { handlePlaylist } from './server/playlist.js'
 import { handleScreens } from './server/screens.js'
 import { handleDecks } from './server/decks.js'
 import { handleBackup } from './server/backup.js'
+import { handleStatus } from './server/status.js'
 import { isAllowed, handleAuth } from './server/auth.js'
 
 export { MIME } from './server/mime.js'
@@ -99,6 +101,10 @@ export function handleApi(req, res) {
   }
   if (url === '/api/playlist') {
     handlePlaylist(req, res)
+    return true
+  }
+  if (url === '/api/status') {
+    handleStatus(req, res)
     return true
   }
   if (url === '/api/screens') {

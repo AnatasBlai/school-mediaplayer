@@ -102,6 +102,9 @@ export function isAllowed(req) {
   return !readAuth() || loggedIn(req)
 }
 
+/** Задан ли пароль на редактор (для окна «Состояние системы»). */
+export const authRequired = () => !!readAuth()
+
 // ---------- API ----------
 function send(res, code, obj) {
   res.statusCode = code
