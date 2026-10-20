@@ -15,7 +15,8 @@ import { level as sysLevel, startStatus } from './systemStatus.js'
 import { silentList, screenLabel } from './screens.js'
 import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
-import { auth, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
+import UsersModal from './UsersModal.vue'
+import { auth, can, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
 
 checkAuth()
@@ -35,6 +36,14 @@ const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? 
 const section = ref(fromHash())
 const importOpen = ref(false) // окно «Вставить из Excel»
 const statusOpen = ref(false) // окно «Состояние системы»
+// раздел без права виден только для чтения: сверху плашка, а любые действия в разделе гасятся (сервер всё равно ответит 403)
+const readonly = computed(() => !can(section.value))
+const BLOCKED = ['click', 'dblclick', 'mousedown', 'keydown', 'keypress', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop', 'dragstart', 'contextmenu']
+function guard(e) {
+  if (!readonly.value || (e.type === 'keydown' && e.key === 'Tab')) return
+  e.stopPropagation()
+  e.preventDefault()
+}
 const SYS_TITLE = { ok: 'Всё хорошо', warn: 'Есть предупреждения', bad: 'Есть ошибки' }
 function go(id) {
   section.value = id
@@ -44,12 +53,15 @@ const onHash = () => (section.value = fromHash())
 
 // файл, брошенный мимо медиатеки, браузер открыл бы вместо редактора — запрещаем
 const stopDrop = (e) => e.preventDefault()
+const workEl = ref(null)
 onMounted(() => {
+  BLOCKED.forEach((t) => workEl.value?.addEventListener(t, guard, true))
   window.addEventListener('hashchange', onHash)
   window.addEventListener('dragover', stopDrop)
   window.addEventListener('drop', stopDrop)
 })
 onBeforeUnmount(() => {
+  BLOCKED.forEach((t) => workEl.value?.removeEventListener(t, guard, true))
   window.removeEventListener('hashchange', onHash)
   window.removeEventListener('dragover', stopDrop)
   window.removeEventListener('drop', stopDrop)
@@ -88,7 +100,7 @@ const status = computed(() => {
       <div class="hint">
         <template v-if="section === 'schedule'">Клик — выделить ячейку, второй клик или ввод — редактировать, Enter — сохранить</template>
       </div>
-      <button v-if="section === 'schedule'" class="open xl" @click="importOpen = true">Вставить из Excel</button>
+      <button v-if="section === 'schedule' && can('schedule')" class="open xl" @click="importOpen = true">Вставить из Excel</button>
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
       <button v-if="silentText" class="silent" :title="silentText + ' — показать «Сейчас на экране»'" @click="goScreens">⚠ {{ silentText }}</button>
       <div class="status" :class="status.cls">{{ status.text }}</div>
@@ -96,11 +108,18 @@ const status = computed(() => {
       <button class="open xl" @click="statusOpen = true">
         <span v-if="sysLevel" class="sdot" :class="sysLevel" :title="SYS_TITLE[sysLevel]"></span>Состояние
       </button>
-      <button class="open xl" @click="auth.passOpen = true">🔒 Пароль</button>
-      <button v-if="auth.required" class="open xl" @click="logout">Выйти</button>
+      <button v-if="!auth.required" class="open xl" @click="auth.setupOpen = true">🔒 Создать администратора</button>
+      <template v-else-if="auth.user">
+        <span class="who" :title="auth.user.login">{{ auth.user.name }}</span>
+        <button v-if="can('admin')" class="open xl" @click="auth.usersOpen = true">Пользователи</button>
+        <button class="open xl" @click="auth.passOpen = true">Мой пароль</button>
+        <button class="open xl" @click="logout">Выйти</button>
+      </template>
     </header>
     <div v-if="syncNotice" class="sync-note" :class="{ err: syncNotice.error }" role="status">{{ syncNotice.text }}</div>
-    <main class="work">
+    <div v-if="readonly" class="ro-note" role="status">Вы можете только смотреть этот раздел</div>
+    <div v-if="auth.denied" class="sync-note err" role="alert">{{ auth.denied }}</div>
+    <main ref="workEl" class="work" :class="{ ro: readonly }">
       <div v-if="section === 'schedule'" class="board">
         <ScheduleBoard editable />
       </div>
@@ -110,6 +129,7 @@ const status = computed(() => {
     </main>
     <ScheduleImport v-if="importOpen" @close="importOpen = false" />
     <SystemStatus v-if="statusOpen" @close="statusOpen = false" />
+    <UsersModal v-if="auth.usersOpen" @close="auth.usersOpen = false" />
     <AuthModals />
   </div>
 </template>
@@ -254,6 +274,26 @@ const status = computed(() => {
 }
 .open:hover {
   background: #4a505c;
+}
+.who {
+  flex: none;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 700;
+  color: #c9ccd3;
+}
+.ro-note {
+  flex: none;
+  padding: 7px 16px;
+  background: #4a505c;
+  color: #e6e8ec;
+  font-weight: 700;
+  text-align: center;
+}
+.work.ro {
+  cursor: default;
 }
 .work {
   flex: 1;

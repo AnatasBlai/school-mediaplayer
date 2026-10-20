@@ -13,8 +13,9 @@
 4. Если в задаче что-то неясно или противоречит этому файлу — спроси владельца, а не угадывай.
 5. Новое поле данных → сразу в три места: клиент (создание/нормализация), **сервер (`clean…` в server/*.js — иначе
    сервер молча выбросит поле)**, раздел «Данные» этого файла.
-6. **Все записи — только после входа**: новый POST/PUT/PATCH/DELETE в API автоматически закрыт паролем (`isAllowed` в
-   server/auth.js); открытым без входа делай только если это отчёт/действие экрана — и впиши исключение туда.
+6. **Все записи — только после входа и по правам**: новый POST/PUT/PATCH/DELETE в API по умолчанию требует «admin»;
+   нужное право (schedule/playlist/decks/media) впиши в таблицу `WRITE_RIGHTS` в server/auth.js; открытым без входа делай
+   только отчёт/действие экрана (`OPEN_WRITES`). Нет права → 403, нет входа → 401.
 7. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
 
 ## Стек и запуск
@@ -97,8 +98,10 @@ server/
   media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
   backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore { name, files? } (частичный возврат; зеркало media/ копируется, только если среди files media.json),
                    GET /snapshot/<имя>/<файл>.json и /mirror (после входа — правило в auth.js `isAllowed`; имя и файл по regex, иначе 400); расписание раз в 10 мин
-  auth.js          пароль на редактор: isAllowed(req) (api.js вызывает до всех обработчиков; без входа запись → 401, GET открыт;
-                   исключения: POST /api/screens, POST /api/decks/<id>/take), /api/auth*, scrypt + сессии 30 дней (cookie tablo_session)
+  auth.js          личные входы и права: isAllowed(req) → { ok, code } (api.js вызывает до всех обработчиков; запись без входа → 401,
+                   без права → 403, GET открыт, кроме копий и /api/users; таблица WRITE_RIGHTS; нет пользователей — всё открыто),
+                   /api/auth* и /api/users* (только admin; первого admin создаёт открытый POST), scrypt + сессии 30 дней (cookie
+                   tablo_session), лимит 5 попыток по IP и по логину; migrateOldPassword() вызывает server.js (не импорт!)
   status.js        GET /api/status — версия, время работы, диск (diskSpace из backup.js), объём data/media, backupSummary(), пароль; без секретов
   screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
@@ -134,8 +137,9 @@ src/
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
   admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal, a-switch, a-chips, a-link, a-check…)
-    auth.js + AuthModals.vue  вход: window.fetch оборачивается (при 401 окно входа и повтор запроса), needLogin() для XHR
-                   (mediaApi.uploadMedia); кнопки «🔒 Пароль» / «Выйти» в шапке AdminApp
+    auth.js + AuthModals.vue + UsersModal.vue  вход по логину: window.fetch оборачивается (401 — окно входа и повтор, 403 —
+                   плашка «Нет прав»), needLogin() для XHR; `can(право)`; раздел без права — `readonly` в AdminApp (плашка + capture-
+                   перехват кликов/ввода в <main>); окно «Пользователи» (admin); кнопки в шапке AdminApp
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
     PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд»), сводка «Настройки экрана»
                    (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
@@ -195,7 +199,8 @@ from > to — через полночь. Нет файла → плейлист 
 ```
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
-**auth.json** `{ salt, hash }` (нет файла — пароля нет) и **sessions.json** `{ токен: expiresAt }` — пароль и входы; не в снимках копий
+**users.json** `{ users: [{ id, name, login, salt, hash, rights: [schedule|playlist|decks|media|admin], disabled }] }` (нет файла — входов нет, всё открыто)
+и **sessions.json** `{ токен: { exp, user } }`; старый **auth.json** при старте → пользователь admin, файл → `auth.json.old`; все три не в снимках копий
 (`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
 ## Поведение, которое легко сломать
@@ -223,8 +228,9 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
   Новое поле данных, которое хранится на клиенте иначе, чем на сервере, — учти в `normalize` стора.
   После обрыва EventSource переподключается сам и по `hello` догружает. Сменился `boot` → **экран** делает reload
   (так получает новую сборку). Восстанавливая данные «из прошлого», ставь свежий updatedAt — иначе клиенты не загрузят.
-- **Тесты с паролем**: на копии сервера задать пароль (`PUT /api/auth/password {current:"",next:"…"}` с cookie-jar), в
-  Playwright войти через окно или `POST /api/auth/login`. Лимит 5 неверных попыток/IP — в памяти, сброс перезапуском сервера.
+- **Тесты с входами**: на копии сервера создать админа (`POST /api/users {name,login,password}` без входа — станет
+  admin и войдёт), остальных — им же (`rights: [...]`); в Playwright войти через окно или `POST /api/auth/login {login,password}`.
+  Лимит 5 неверных попыток (по IP и по логину) — в памяти, сброс перезапуском сервера. **Модули server/ при импорте не должны трогать data/** (тесты импортируют их на рабочих данных).
 - Видео со звуком без клика — только с флагом браузера `--autoplay-policy=no-user-gesture-required` (есть в kiosk.ps1).
 - Резервные копии делает только `server.js` (не Vite). Сервер при автозапуске работает от SYSTEM.
 
@@ -282,5 +288,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.9.1 — экраны помнятся в `data/screens.json`, кнопка «Убрать из списка», жёлтая плашка «Экран не отвечает» в шапке редактора (только в учебное время), строка «Экраны» в «Состоянии» учитывает то же правило.
 - v0.9.2 — «Посмотреть» у снимка копии: окно RestorePreview.vue с разницей по разделам и частичным возвратом (`restore { files }`), src/dataDiff.js, чтение снимков только после входа.
 - v0.9.3 — правки вдвоём: заголовок `X-Base-Updated`, 409 с текущими данными, `merge3` на клиенте (src/merge.js, src/saver.js), плашка при совпавших местах; тесты tests/merge.test.js.
+
+- v0.9.4 — личные входы и права: users.json, логин+пароль, галочки Расписание/Плейлист/Колоды/Медиатека/Администратор, 403 без права, раздел «только смотреть», окно «Пользователи», переход со старого пароля.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

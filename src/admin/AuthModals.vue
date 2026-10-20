@@ -1,8 +1,10 @@
 <script setup>
-// Окна «Вход в редактор» и «Пароль» (задать / сменить / убрать). Логика — в auth.js.
+// Окна «Вход в редактор», «Создать администратора» и «Мой пароль». Логика — в auth.js.
 import { ref, watch } from 'vue'
-import { auth, login, setPassword } from './auth.js'
+import { auth, login, setPassword, createAdmin } from './auth.js'
 
+const name = ref('')
+const log = ref('')
 const pass = ref('')
 const cur = ref('')
 const next = ref('')
@@ -11,9 +13,9 @@ const error = ref('')
 const busy = ref(false)
 
 watch(
-  () => [auth.loginOpen, auth.passOpen],
+  () => [auth.loginOpen, auth.passOpen, auth.setupOpen],
   () => {
-    pass.value = cur.value = next.value = next2.value = error.value = ''
+    name.value = log.value = pass.value = cur.value = next.value = next2.value = error.value = ''
   },
 )
 
@@ -28,12 +30,17 @@ async function run(fn) {
   busy.value = false
 }
 
-const doLogin = () => pass.value && run(() => login(pass.value))
+const doLogin = () => log.value && pass.value && run(() => login(log.value, pass.value))
 
-function doSet(remove) {
-  if (!remove && next.value !== next2.value) return (error.value = 'Пароли не совпадают')
-  if (!remove && next.value.length < 4) return (error.value = 'Пароль — не короче 4 символов')
-  run(() => setPassword(cur.value, remove ? '' : next.value))
+function doSet() {
+  if (next.value !== next2.value) return (error.value = 'Пароли не совпадают')
+  if (next.value.length < 4) return (error.value = 'Пароль — не короче 4 символов')
+  run(() => setPassword(cur.value, next.value))
+}
+
+function doSetup() {
+  if (next.value !== next2.value) return (error.value = 'Пароли не совпадают')
+  run(() => createAdmin(name.value, log.value, next.value))
 }
 </script>
 
@@ -41,35 +48,42 @@ function doSet(remove) {
   <div v-if="auth.loginOpen" class="a-modal-back auth-back">
     <form class="a-modal auth" @submit.prevent="doLogin">
       <h2>Вход в редактор</h2>
-      <input v-model="pass" class="a-input" type="password" placeholder="Пароль" autocomplete="current-password" autofocus />
+      <input v-model="log" class="a-input" placeholder="Логин" autocomplete="username" autocapitalize="none" autofocus />
+      <input v-model="pass" class="a-input" type="password" placeholder="Пароль" autocomplete="current-password" />
       <div v-if="error" class="err">{{ error }}</div>
-      <button class="a-btn primary" :disabled="busy || !pass">Войти</button>
+      <button class="a-btn primary" :disabled="busy || !log || !pass">Войти</button>
       <div class="small">Забыли пароль? Обратитесь к администратору табло</div>
     </form>
   </div>
 
-  <div v-else-if="auth.passOpen" class="a-modal-back" @mousedown.self="auth.passOpen = false">
-    <form class="a-modal auth" @submit.prevent="doSet(false)">
-      <h2>{{ auth.required ? 'Сменить пароль' : 'Пароль на редактор' }}</h2>
-      <div v-if="!auth.required" class="small">
-        Без пароля любой в школьной сети может менять расписание. С паролем редактор будет просить вход; экраны работают как раньше.
+  <div v-else-if="auth.setupOpen" class="a-modal-back" @mousedown.self="auth.setupOpen = false">
+    <form class="a-modal auth" @submit.prevent="doSetup">
+      <h2>Создать администратора</h2>
+      <div class="small">
+        Без входа любой в школьной сети может менять расписание. После создания редактор будет просить логин и пароль; экраны работают как раньше.
       </div>
-      <input
-        v-if="auth.required"
-        v-model="cur"
-        class="a-input"
-        type="password"
-        placeholder="Текущий пароль"
-        autocomplete="current-password"
-      />
-      <input v-model="next" class="a-input" type="password" placeholder="Новый пароль" autocomplete="new-password" />
-      <input v-model="next2" class="a-input" type="password" placeholder="Новый пароль ещё раз" autocomplete="new-password" />
+      <input v-model="name" class="a-input" placeholder="Имя (Иванова И. И.)" maxlength="60" />
+      <input v-model="log" class="a-input" placeholder="Логин (латиница и цифры)" maxlength="30" autocapitalize="none" autocomplete="username" />
+      <input v-model="next" class="a-input" type="password" placeholder="Пароль" autocomplete="new-password" />
+      <input v-model="next2" class="a-input" type="password" placeholder="Пароль ещё раз" autocomplete="new-password" />
       <div v-if="error" class="err">{{ error }}</div>
       <div class="row">
-        <button class="a-btn primary" :disabled="busy || !next">{{ auth.required ? 'Сменить' : 'Задать пароль' }}</button>
-        <button v-if="auth.required" type="button" class="a-btn danger" :disabled="busy || !cur" @click="doSet(true)">
-          Убрать пароль
-        </button>
+        <button class="a-btn primary" :disabled="busy || !name || !log || !next">Создать</button>
+        <button type="button" class="a-btn" @click="auth.setupOpen = false">Отмена</button>
+      </div>
+    </form>
+  </div>
+
+  <div v-else-if="auth.passOpen" class="a-modal-back" @mousedown.self="auth.passOpen = false">
+    <form class="a-modal auth" @submit.prevent="doSet">
+      <h2>Мой пароль</h2>
+      <input v-model="cur" class="a-input" type="password" placeholder="Текущий пароль" autocomplete="current-password" />
+      <input v-model="next" class="a-input" type="password" placeholder="Новый пароль" autocomplete="new-password" />
+      <input v-model="next2" class="a-input" type="password" placeholder="Новый пароль ещё раз" autocomplete="new-password" />
+      <div class="small">На других компьютерах придётся войти заново.</div>
+      <div v-if="error" class="err">{{ error }}</div>
+      <div class="row">
+        <button class="a-btn primary" :disabled="busy || !cur || !next">Сменить</button>
         <button type="button" class="a-btn" @click="auth.passOpen = false">Отмена</button>
       </div>
     </form>

@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { handleApi, MIME } from './api.js'
 import { startBackupScheduler } from './server/backup.js'
+import { migrateOldPassword } from './server/auth.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(ROOT, 'dist')
@@ -24,6 +25,7 @@ function sendFile(res, file, noCache) {
   })
 }
 
+migrateOldPassword() // старый общий пароль (data/auth.json) → пользователь admin
 const server = http.createServer((req, res) => {
   if (handleApi(req, res)) return
 

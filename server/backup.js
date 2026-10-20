@@ -26,9 +26,9 @@ const FILE = path.join(DATA, 'backup.json')
 const KEEP = 30 // сколько снимков data/ хранить
 const PERIODS = { off: 0, day: 24 * 3600e3, week: 7 * 24 * 3600e3, month: 30 * 24 * 3600e3 }
 const RETRY = 3600e3 // после ошибки — повтор не чаще раза в час
-// файлы data/, которые попадают в снимок (backup.json — настройки самой копии; auth.json и sessions.json — пароль и входы, screens.json — список экранов,
+// файлы data/, которые попадают в снимок (backup.json — настройки самой копии; auth.json, users.json и sessions.json — пароли и входы, screens.json — список экранов,
 // их в копии не кладём и не восстанавливаем)
-const isDataFile = (f) => f.endsWith('.json') && !['backup.json', 'auth.json', 'sessions.json', 'screens.json'].includes(f)
+const isDataFile = (f) => f.endsWith('.json') && !['backup.json', 'auth.json', 'users.json', 'sessions.json', 'screens.json'].includes(f)
 // у этих файлов при восстановлении ставим свежий updatedAt, иначе экраны посчитают данные старыми и не загрузят
 const STAMPED = ['schedule.json', 'playlist.json', 'decks.json']
 

@@ -7,7 +7,7 @@
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
 //   /api/status  — состояние системы: диск, копии, версия (server/status.js)
-//   /api/auth*   — пароль на редактор; все записи без входа дают 401 (server/auth.js)
+//   /api/auth*   — входы и права; запись без входа — 401, без права на раздел — 403 (server/auth.js)
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -97,11 +97,14 @@ function handleData(req, res) {
 /** Возвращает true, если запрос обработан. */
 export function handleApi(req, res) {
   const url = (req.url || '').split('?')[0]
-  if (url.startsWith('/api/') && !isAllowed(req)) {
-    res.statusCode = 401
-    res.setHeader('Content-Type', 'application/json; charset=utf-8')
-    res.end('{"ok":false,"error":"Нужен вход в редактор"}')
-    return true
+  if (url.startsWith('/api/')) {
+    const a = isAllowed(req)
+    if (!a.ok) {
+      res.statusCode = a.code
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify({ ok: false, error: a.error }))
+      return true
+    }
   }
   if (handleAuth(req, res)) return true
   if (url === '/api/events') {
