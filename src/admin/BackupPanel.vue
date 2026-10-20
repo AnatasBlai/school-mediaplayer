@@ -4,6 +4,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onServerEvent } from '../store.js'
 import { fmtSize } from './mediaApi.js'
+import RestorePreview from './RestorePreview.vue'
 
 const emit = defineEmits(['close'])
 
@@ -21,6 +22,7 @@ const period = ref('off')
 const check = ref(null) // POST /api/backup/check для введённой папки
 const error = ref('')
 const saving = ref(false)
+const preview = ref(null) // снимок, который смотрим
 const askMove = ref(false) // показать вопрос «перенести копии?»
 
 async function call(method, url, body) {
@@ -231,7 +233,8 @@ onBeforeUnmount(() => {
               <span class="snap-date">{{ fmtStamp(s.name) }}</span>
               <span v-if="s.name.includes('before-restore')" class="a-hint">перед возвратом</span>
               <span class="spacer"></span>
-              <button class="a-btn small" :disabled="!!st.job" @click="restore(s)">Вернуть</button>
+              <button class="a-btn small" :disabled="!!st.job" @click="preview = s">Посмотреть</button>
+              <button class="a-btn small" :disabled="!!st.job" @click="restore(s)">Вернуть всё</button>
             </div>
           </div>
         </section>
@@ -239,6 +242,7 @@ onBeforeUnmount(() => {
         <div v-if="error" class="err">{{ error }}</div>
       </template>
     </div>
+    <RestorePreview v-if="preview" :name="preview.name" :title="fmtStamp(preview.name)" @close="preview = null" @restored="preview = null" />
   </div>
 </template>
 

@@ -95,7 +95,8 @@ server/
   decks.js         GET/PUT /api/decks (нет файла → STARTER_DECKS из starterDecks.js), POST /api/decks/<id>/take → { n }
                    (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
   media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
-  backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore; расписание раз в 10 мин
+  backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore { name, files? } (частичный возврат; зеркало media/ копируется, только если среди files media.json),
+                   GET /snapshot/<имя>/<файл>.json и /mirror (после входа — правило в auth.js `isAllowed`; имя и файл по regex, иначе 400); расписание раз в 10 мин
   auth.js          пароль на редактор: isAllowed(req) (api.js вызывает до всех обработчиков; без входа запись → 401, GET открыт;
                    исключения: POST /api/screens, POST /api/decks/<id>/take), /api/auth*, scrypt + сессии 30 дней (cookie tablo_session)
   status.js        GET /api/status — версия, время работы, диск (diskSpace из backup.js), объём data/media, backupSummary(), пароль; без секретов
@@ -112,6 +113,7 @@ src/
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
+  dataDiff.js      diffSchedule/diffPlaylist/diffDecks/diffMedia(a=текущее, b=снимок) → строки по-человечески, limitLines (≤30); без Vue — для окна admin/RestorePreview.vue (возврат из копии) и будущего журнала правок
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now, isBreak) (when.breaks → isBreak из store.js), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
@@ -270,5 +272,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 Сделано в этапе 9:
 - v0.9.0 — окно «Состояние системы» (`/api/status`, server/status.js; SystemStatus.vue): диск, копии, экраны, часы, пароль, точка в шапке.
 - v0.9.1 — экраны помнятся в `data/screens.json`, кнопка «Убрать из списка», жёлтая плашка «Экран не отвечает» в шапке редактора (только в учебное время), строка «Экраны» в «Состоянии» учитывает то же правило.
+- v0.9.2 — «Посмотреть» у снимка копии: окно RestorePreview.vue с разницей по разделам и частичным возвратом (`restore { files }`), src/dataDiff.js, чтение снимков только после входа.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

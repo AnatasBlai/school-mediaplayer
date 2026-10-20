@@ -9,7 +9,9 @@
 //   POST /api/backup/check    { dir } → можно ли писать в папку, есть ли там уже копии
 //   PUT  /api/backup          { dir, period, move } — сохранить; move — перенести копии из старой папки в новую
 //   POST /api/backup/run      — сделать копию сейчас
-//   POST /api/backup/restore  { name } — вернуть данные из снимка (перед этим текущие данные тоже сохраняются)
+//   POST /api/backup/restore  { name, files? } — вернуть данные из снимка (files — только эти json; нет — все); перед этим текущие данные тоже сохраняются
+//   GET  /api/backup/snapshot/<имя>/<файл>.json → содержимое файла из снимка (только после входа, имя и файл строго проверяются → 400)
+//   GET  /api/backup/mirror   → { files } — что лежит в зеркале media/ папки копий (только после входа; для предпросмотра возврата)
 // Ход работы — SSE 'backup' (клиент перечитывает GET /api/backup).
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
@@ -287,15 +289,21 @@ async function moveBackup(from, to) {
   }
 }
 
-async function runRestore(name) {
+const SNAP_NAME = /^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}[\w-]*$/
+const SNAP_FILE = /^[\w-]+\.json$/
+
+async function runRestore(name, only) {
   const s = load()
   const dir = normDir(s.dir)
   const src = path.join(dir, 'data', name)
-  if (!/^[\w-]+$/.test(name) || !fs.existsSync(src)) throw new Error('Снимок не найден')
+  if (!SNAP_NAME.test(name) || !fs.existsSync(src)) throw new Error('Снимок не найден')
+  const inSnap = (await fsp.readdir(src)).filter(isDataFile)
+  const files = only ? inSnap.filter((f) => only.includes(f)) : inSnap
+  if (!files.length) throw new Error('В снимке нет отмеченных файлов')
   // на всякий случай сохраняем то, что есть сейчас
   await snapshotData(dir, '_before-restore')
   const now = Date.now()
-  for (const f of (await fsp.readdir(src)).filter(isDataFile)) {
+  for (const f of files) {
     let text = await fsp.readFile(path.join(src, f), 'utf8')
     if (STAMPED.includes(f)) {
       try {
@@ -310,20 +318,22 @@ async function runRestore(name) {
     await fsp.writeFile(dst + '.tmp', text, 'utf8')
     await fsp.rename(dst + '.tmp', dst)
   }
-  // файлы медиатеки, которых нет в media/, — из зеркала
-  const mirror = path.join(dir, 'media')
-  const files = await listFiles(mirror)
-  for (let i = 0; i < files.length; i++) {
-    progress(i, files.length, files[i])
-    const dst = path.join(MEDIA, files[i])
-    if (fs.existsSync(dst)) continue
-    await fsp.mkdir(path.dirname(dst), { recursive: true })
-    await fsp.copyFile(path.join(mirror, files[i]), dst)
+  // файлы медиатеки, которых нет в media/, — из зеркала (только если возвращаем саму медиатеку)
+  if (files.includes('media.json')) {
+    const mirror = path.join(dir, 'media')
+    const list = await listFiles(mirror)
+    for (let i = 0; i < list.length; i++) {
+      progress(i, list.length, list[i])
+      const dst = path.join(MEDIA, list[i])
+      if (fs.existsSync(dst)) continue
+      await fsp.mkdir(path.dirname(dst), { recursive: true })
+      await fsp.copyFile(path.join(mirror, list[i]), dst)
+    }
   }
-  broadcast('data', { updatedAt: now })
-  broadcast('playlist', { updatedAt: now })
-  broadcast('decks', { updatedAt: now })
-  broadcast('media')
+  if (files.includes('schedule.json')) broadcast('data', { updatedAt: now })
+  if (files.includes('playlist.json')) broadcast('playlist', { updatedAt: now })
+  if (files.includes('decks.json')) broadcast('decks', { updatedAt: now })
+  if (files.includes('media.json')) broadcast('media')
 }
 
 /** Запускает работу в фоне; повторный запуск, пока идёт другая, не нужен. */
@@ -467,9 +477,32 @@ export function handleBackup(req, res) {
       lastTryAt = Date.now()
       return json(res, start('backup', runBackup) ? 200 : 409, { ok: true })
     }
+    if (url === '/api/backup/mirror' && m === 'GET') {
+      if (!load().dir) return json(res, 400, { ok: false, error: 'Папка копий не указана' })
+      return json(res, 200, { files: (await listFiles(path.join(normDir(load().dir), 'media'))).map((f) => f.replaceAll('\\', '/')) })
+    }
+    if (url.startsWith('/api/backup/snapshot/') && m === 'GET') {
+      const [name, file, ...rest] = url.slice('/api/backup/snapshot/'.length).split('/')
+      if (rest.length || !SNAP_NAME.test(name || '') || !SNAP_FILE.test(file || '') || !isDataFile(file)) {
+        return json(res, 400, { ok: false, error: 'Неверное имя снимка или файла' })
+      }
+      if (!load().dir) return json(res, 400, { ok: false, error: 'Папка копий не указана' })
+      let text
+      try {
+        text = await fsp.readFile(path.join(normDir(load().dir), 'data', name, file), 'utf8')
+      } catch {
+        return json(res, 404, { ok: false, error: 'В снимке нет такого файла' })
+      }
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.setHeader('Cache-Control', 'no-store')
+      return res.end(text)
+    }
     if (url === '/api/backup/restore' && m === 'POST') {
-      const { name } = await readBody(req)
-      return json(res, start('restore', () => runRestore(String(name || ''))) ? 200 : 409, { ok: true })
+      const { name, files } = await readBody(req)
+      const only = Array.isArray(files) ? files.map(String).filter((f) => SNAP_FILE.test(f)) : null
+      if (only && !only.length) return json(res, 400, { ok: false, error: 'Не отмечено ни одного файла' })
+      return json(res, start('restore', () => runRestore(String(name || ''), only)) ? 200 : 409, { ok: true })
     }
     json(res, 404, { ok: false, error: 'Нет такого адреса' })
   })().catch((e) => json(res, 500, { ok: false, error: e.message || String(e) }))

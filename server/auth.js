@@ -1,4 +1,4 @@
-// Пароль на редактор. Экран (/) работает без пароля; без входа сервер отклоняет все записи (401), чтение открыто.
+// Пароль на редактор. Экран (/) работает без пароля; без входа сервер отклоняет все записи (401), чтение открыто (кроме снимков копий).
 //   data/auth.json     { salt, hash } — scrypt-хэш пароля; нет файла — пароля нет (забыли пароль: удалить файл)
 //   data/sessions.json { token: expiresAt } — вход помнится 30 дней и переживает перезапуск сервера
 // API:
@@ -96,6 +96,8 @@ function fail(req) {
 /** Можно ли выполнить запрос: чтение и исключения открыты, остальное — после входа (если пароль задан). */
 export function isAllowed(req) {
   const url = (req.url || '').split('?')[0]
+  // содержимое снимков — личные данные: читать только после входа
+  if (req.method === 'GET' && /^\/api\/backup\/(snapshot\/|mirror$)/.test(url)) return !readAuth() || loggedIn(req)
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return true
   if (url.startsWith('/api/auth')) return true // эти запросы проверяют себя сами
   if (req.method === 'POST' && (url === '/api/screens' || /^\/api\/decks\/[^/]+\/take$/.test(url))) return true
