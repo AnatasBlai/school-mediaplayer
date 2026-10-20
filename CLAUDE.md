@@ -119,6 +119,7 @@ src/
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
   scheduleImport.js разбор таблицы из Excel (parseScheduleTable, без Vue); окно — admin/ScheduleImport.vue (кнопка в шапке AdminApp)
+  menu.js          меню столовой без Vue: parseDishes, schoolWeek/dayKeyOf (неделя от 1 сентября), menuDay(it, now, after), menuHeading, fitMenu(meals, panel) → размер шрифта и экраны (оценка по строкам, не по DOM), tableToLines; afterLessons() — в store.js
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
@@ -136,6 +137,7 @@ src/
                    schedule+changes — одно табло (ключ 'board'); неподходящие слайды пропускаются; нет ни одного —
                    FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens (slide.urgent). Срочный режим (`urgentItem`): `following()` всегда отдаёт этот слайд без on/«Когда», `blanked` не действует, смена режима → `advance()`. now — раз в 10 с
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
+    MenuSlide.vue  меню столовой на SlideStage: карточки приёмов пищи (1–2 в ряд, 3–4 сеткой), экраны по очереди (item.duration на экран); проп day/page — превью редактора
     CountdownSlide.vue  обратный отсчёт (число + слово через plural; < суток — «Уже сегодня!» / «Осталось 5 ч 20 мин»); состояние — countdownState в rules.js
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     WinnersSlide.vue победители: рамка/фото/анимации скопированы из NewsSlide (её не трогали); экраны групп по очереди,
@@ -156,7 +158,7 @@ src/
                    компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     ShowCalendar.vue «Календарь показов» (кнопка под «Настройки экрана»): неделя Пн–Вс × слайды, ячейки из `dayShows(when, date)` (rules.js, общая часть с ruleState — `dayRuleState`); только просмотр (`data-ro-allow`), название → SlideSettings
-    NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
+    MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
     NowOnScreen.vue + screens.js — «Сейчас на экране» (клик по блоку в PlaylistEditor открывает `/`, при пустом списке — кнопка «Открыть экран ↗»; `data-ro-allow` пропускает это через readonly-перехват) («Убрать из списка» у экрана без связи), silentList → жёлтая плашка в шапке AdminApp (логика — src/screenAlerts.js: >5 мин без связи, учебное время `inSchoolHours` из bells.js, был на связи сегодня/в прошлый учебный день); MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
@@ -194,11 +196,13 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
     { id, type: 'video',    on, media, fit, sound },            // до конца
     { id, type: 'countdown', on, title ≤60, date: 'ГГГГ-ММ-ДД' /* обязательна, иначе сервер выбросит */, time: 'ЧЧ:ММ'|'', note ≤120, theme, duration },
     { id, type: 'news',     on, label, title, text, date, media?, fit, theme, anim /* none|zoom|drift|parallax|rise, нет → none */, duration },
+    { id, type: 'menu',     on, title ≤40, theme, duration /* с на экран */, twoWeeks,
+      days: { '1'…'6' /* Пн–Сб */, при twoWeeks ещё '8'…'13' /* 2-я неделя */: [≤4 × { name ≤30, time ≤20, lines ≤2000 /* «блюдо — выход — цена» */ }] } },  // MENU_DAY_KEYS в catalog.js
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
     { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
       { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
   ] }
-// у image/video/news/winners/countdown/deck — layout? (свой шаблон); у любого слайда — screens? [≤10 имён экранов по ?name=, нет — все; cleanScreens; screenAllowed в rules.js; срочный режим игнорирует] и when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
+// у image/video/news/winners/countdown/menu/deck — layout? (свой шаблон); у любого слайда — screens? [≤10 имён экранов по ?name=, нет — все; cleanScreens; screenAllowed в rules.js; срочный режим игнорирует] и when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
 ```
 id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
 from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
@@ -315,5 +319,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 - v0.10.2 — календарь показов: окно недели по слайдам, гашению и срочному режиму (ShowCalendar.vue, `dayShows` в rules.js + тест).
 - v0.10.3 — плашка «ИЗМ.» над колонкой класса с изменениями на показанный день, «Упорядочить по классам» во вкладке «Изм.» (src/classMarks.js + тест).
+
+Сделано в этапе 11:
+- v0.11.0 — слайд «Меню столовой» (`menu`): меню по дням Пн–Сб, «две недели», после последнего звонка — завтра, экраны по очереди; MenuSlide/MenuEditor, src/menu.js + тест.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

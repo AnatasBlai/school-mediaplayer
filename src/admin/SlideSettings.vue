@@ -16,6 +16,7 @@ const EDIT_TEXT = {
   news: 'Изменить новость: текст, фото, цвет',
   winners: 'Изменить победителей: места, призёры, фото, цвет',
   countdown: 'Изменить отсчёт: событие, дата, цвет',
+  menu: 'Изменить меню: дни недели, блюда, цвет',
 }
 const file = computed(() => (it.value.media ? mediaById(it.value.media) : null))
 
@@ -114,6 +115,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else-if="it.type === 'news'">Нов.</span>
           <span v-else-if="it.type === 'winners'">🏆</span>
           <span v-else-if="it.type === 'countdown'">⏳</span>
+          <span v-else-if="it.type === 'menu'">🍽</span>
           <span v-else-if="it.type === 'deck'">?!</span>
         </div>
         <div class="ttl">
@@ -140,7 +142,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </div>
           <div v-else class="val">
             <input type="number" class="a-input a-num" min="3" max="3600" :value="it.duration" @change="setDuration($event.target.value)" @keydown.enter="$event.target.blur()" />
-            {{ it.type === 'schedule' ? 'сек. на каждую параллель' : it.type === 'winners' ? 'сек. на каждый экран класса' : 'сек.' }}
+            {{ it.type === 'schedule' ? 'сек. на каждую параллель' : it.type === 'winners' ? 'сек. на каждый экран класса' : it.type === 'menu' ? 'сек. на каждый экран меню' : 'сек.' }}
           </div>
         </div>
 
@@ -317,6 +319,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.winners {
   background: linear-gradient(135deg, #e0b030, #7a4a0c);
+}
+.thumb.menu {
+  background: linear-gradient(135deg, #3c9a4a, #0c4a2a);
+  font-size: 22px;
 }
 .thumb.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);

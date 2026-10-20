@@ -2,7 +2,8 @@
 // Плейлист (/admin#playlist): что и в каком порядке показывает экран. Правки сохраняются сами.
 // Слева (30 %) — добавление слайдов, настройки экрана, «Сейчас на экране»; справа (70 %) — очередь слайдов.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { state, GRADES, isBreak } from '../store.js'
+import { state, GRADES, isBreak, afterLessons } from '../store.js'
+import { menuDay, menuPageCount } from '../menu.js'
 import {
   playlist,
   playlistLoaded,
@@ -20,13 +21,14 @@ import {
   winnerScreensOf,
 } from '../playlist.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
-import { hasRules, ruleState, countdownState, rulesText, isBlanked, tickerTexts } from '../rules.js'
+import { DAY_SHORT, hasRules, ruleState, countdownState, rulesText, isBlanked, tickerTexts } from '../rules.js'
 import { plural } from '../bells.js'
 import { onScreenIds } from './screens.js'
 import NowOnScreen from './NowOnScreen.vue'
 import NewsEditor from './NewsEditor.vue'
 import WinnersEditor from './WinnersEditor.vue'
 import CountdownEditor from './CountdownEditor.vue'
+import MenuEditor from './MenuEditor.vue'
 import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
 import SlideSettings from './SlideSettings.vue'
@@ -57,6 +59,7 @@ function secondsOf(it) {
   if (it.type === 'video') return Math.round(fileOf(it)?.duration || 0)
   if (it.type === 'deck') return deckSeconds(it)
   if (it.type === 'winners') return winnerScreensOf(it).length * it.duration
+  if (it.type === 'menu') return menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals) * it.duration
   return it.duration
 }
 /** Сколько в среднем идёт одна карточка колоды. */
@@ -80,6 +83,7 @@ function summaryOf(it) {
   if (it.type === 'video') p.push('до конца' + (f?.duration ? ` (${fmtDuration(f.duration)})` : ''))
   else if (it.type === 'deck') p.push(`≈ ${deckSeconds(it)} с карточка`)
   else if (it.type === 'winners') p.push(`${winnerScreensOf(it).length} экр. × ${it.duration} с`)
+  else if (it.type === 'menu') p.push(`${menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals)} экр. × ${it.duration} с`)
   else p.push(it.type === 'schedule' ? `${it.duration} с на параллель` : `${it.duration} с`)
   if (it.type === 'changes' && it.skipEmpty) p.push('пропускается, если изменений нет')
   if (it.type === 'image' || it.type === 'video') p.push(it.fit === 'contain' ? 'целиком' : 'заполнить')
@@ -88,9 +92,14 @@ function summaryOf(it) {
   if (hasLayout(it)) p.push(LAYOUT_TITLES[layoutOf(it)].toLowerCase())
   return p.join(' · ')
 }
+/** Для каких дней задано меню: «Пн–Пт», «Пн, Ср». */
+function menuDays(it) {
+  const on = DAY_SHORT.slice(0, 6).filter((_, i) => [...(it.days[i + 1] || []), ...(it.days[i + 8] || [])].some((m) => m.lines.trim()))
+  return on.length ? 'меню: ' + on.join(', ') : 'меню пока не заполнено'
+}
 /** Текст новости / подпись отсчёта — хвостом сводки. */
 const snippetOf = (it) =>
-  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const calOpen = ref(false) // календарь показов
@@ -119,6 +128,7 @@ function settingsEdit() {
   if (it?.type === 'news') newsEdit.value = it
   if (it?.type === 'winners') winEdit.value = it
   if (it?.type === 'countdown') cdEdit.value = it
+  if (it?.type === 'menu') menuEdit.value = it
 }
 
 function remove(i) {
@@ -131,6 +141,7 @@ function copySlide(i) {
   if (copy.type === 'news') newsEdit.value = playlist.items[i + 1]
   if (copy.type === 'winners') winEdit.value = playlist.items[i + 1]
   if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
+  if (copy.type === 'menu') menuEdit.value = playlist.items[i + 1]
 }
 function settingsCopy() {
   const i = items.value.indexOf(setItem.value)
@@ -181,6 +192,7 @@ function onAdd(type, deck) {
   else if (type === 'news') addNews()
   else if (type === 'winners') addWinners()
   else if (type === 'countdown') addCountdown()
+  else if (type === 'menu') addMenu()
   else if (type === 'deck') playlist.items.push(makeSlide('deck', deck))
   else playlist.items.push(makeSlide(type))
 }
@@ -193,6 +205,7 @@ function onTemplate(t) {
   if (it.type === 'news') newsEdit.value = added
   if (it.type === 'winners') winEdit.value = added
   if (it.type === 'countdown') cdEdit.value = added
+  if (it.type === 'menu') menuEdit.value = added
 }
 function renameTemplate(t) {
   const name = prompt('Новое название шаблона:', t.name)
@@ -244,6 +257,20 @@ function closeCountdown() {
   const it = cdEdit.value
   cdEdit.value = null
   if (it && !it.date) {
+    const i = playlist.items.indexOf(it)
+    if (i >= 0) playlist.items.splice(i, 1)
+  }
+}
+// меню столовой: окно правки; меню без единого блюда при закрытии убираем
+const menuEdit = ref(null)
+function addMenu() {
+  playlist.items.push(makeSlide('menu'))
+  menuEdit.value = playlist.items[playlist.items.length - 1]
+}
+function closeMenu() {
+  const it = menuEdit.value
+  menuEdit.value = null
+  if (it && !Object.values(it.days).some((d) => d.some((m) => m.lines.trim()))) {
     const i = playlist.items.indexOf(it)
     if (i >= 0) playlist.items.splice(i, 1)
   }
@@ -366,6 +393,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'news'">Новость</span>
             <span v-else-if="it.type === 'winners'">🏆</span>
             <span v-else-if="it.type === 'countdown'">⏳</span>
+            <span v-else-if="it.type === 'menu'">🍽</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
             <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -415,6 +443,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <NewsEditor v-if="newsEdit" :item="newsEdit" @close="closeNews" />
     <WinnersEditor v-if="winEdit" :item="winEdit" @close="closeWinners" />
     <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
+    <MenuEditor v-if="menuEdit" :item="menuEdit" @close="closeMenu" />
 
     <!-- выбор файлов из медиатеки -->
     <div v-if="picker.open" class="modal-back" @mousedown.self="picker.open = false">
@@ -705,6 +734,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
   font-size: 15px;
+}
+.thumb.menu {
+  background: linear-gradient(135deg, #3c9a4a, #0c4a2a);
+  font-size: 22px;
 }
 .thumb.countdown {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);

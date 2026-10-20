@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
 import { baseConflict, nextUpdated } from './conflict.js'
 import { logChange } from './journal.js'
-import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES } from '../src/catalog.js'
+import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES, MENU_DAY_KEYS, MENU_DAY_KEYS_2 } from '../src/catalog.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
@@ -138,6 +138,21 @@ export function cleanItem(x) {
     it.note = str(x.note, 120)
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.duration = secs(x.duration, 15)
+  } else if (x.type === 'menu') {
+    // меню столовой: дни недели → приёмы пищи (до 4) со строками блюд; вторая неделя (8…13) — только при twoWeeks
+    it.title = str(x.title, 40)
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.duration = secs(x.duration, 15) // секунд на один экран меню
+    it.twoWeeks = !!x.twoWeeks
+    it.days = {}
+    for (const k of it.twoWeeks ? [...MENU_DAY_KEYS, ...MENU_DAY_KEYS_2] : MENU_DAY_KEYS) {
+      const meals = (Array.isArray(x.days?.[k]) ? x.days[k] : []).slice(0, 4).map((m) => ({
+        name: str(m?.name, 30),
+        time: str(m?.time, 20),
+        lines: str(m?.lines, 2000),
+      }))
+      if (meals.length) it.days[k] = meals
+    }
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
     if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null

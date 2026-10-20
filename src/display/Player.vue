@@ -10,13 +10,15 @@
 // панель рисует сам слайд (MediaSlide поверх превью, NewsSlide/WinnersSlide/DeckCard — внутри своей сцены).
 // О текущем слайде экран сообщает серверу (POST /api/screens) — редактор показывает «сейчас на экране».
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { state, GRADES, hasChanges, isBreak } from '../store.js'
+import { state, GRADES, hasChanges, isBreak, afterLessons } from '../store.js'
+import { menuDay } from '../menu.js'
 import { playlist, playlistLoaded, mediaLoaded, mediaById, startPlaylist, layoutOf, winnerScreensOf } from '../playlist.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaSlide from './MediaSlide.vue'
 import NewsSlide from './NewsSlide.vue'
 import WinnersSlide from './WinnersSlide.vue'
 import CountdownSlide from './CountdownSlide.vue'
+import MenuSlide from './MenuSlide.vue'
 import DeckSlide from './DeckSlide.vue'
 import { ruleState, isBlanked, countdownState, screenAllowed } from '../rules.js'
 import Ticker from './Ticker.vue'
@@ -47,6 +49,7 @@ function playable(it) {
   if (it.type === 'news') return !!(it.title || it.text)
   if (it.type === 'winners') return winnerScreensOf(it).length > 0
   if (it.type === 'countdown') return !!it.date && !countdownState(it, now.value).over
+  if (it.type === 'menu') return !!menuDay(it, now.value, afterLessons(now.value))
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -216,6 +219,13 @@ onBeforeUnmount(() => {
       />
       <CountdownSlide
         v-else-if="s.item.type === 'countdown'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <MenuSlide
+        v-else-if="s.item.type === 'menu'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

@@ -278,3 +278,10 @@ export function isBreak(now = new Date()) {
   if (dow === 0) return false
   return bellStatus(bellsForDay(state.settings.bells, dow), now, maxLessonOfDay(dow)).kind === 'break'
 }
+
+/** Уроки на сегодня закончились (после последнего звонка) — слайд «Меню» тогда показывает завтрашний день. */
+export function afterLessons(now = new Date()) {
+  const dow = now.getDay()
+  if (dow === 0) return false
+  return bellStatus(bellsForDay(state.settings.bells, dow), now, maxLessonOfDay(dow)).kind === 'after'
+}
