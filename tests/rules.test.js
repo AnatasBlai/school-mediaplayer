@@ -118,3 +118,21 @@ test('screenAllowed: нет списка — всем; имя без регис�
   assert.equal(screenAllowed(['Hall'], 'Canteen'), false)
   assert.equal(screenAllowed(['Hall'], ''), false)
 })
+
+test('dayShows: даты, дни, время, перемены', async () => {
+  const { dayShows } = await import('../src/rules.js')
+  const day = (y, m, dd) => new Date(y, m - 1, dd)
+  assert.deepEqual(dayShows(null, day(2026, 10, 21)), { on: true, all: true, timeText: '', breaks: false })
+  const w = { dateFrom: '2026-10-19', dateTo: '2026-10-21', days: [1, 3] }
+  assert.equal(dayShows(w, day(2026, 10, 18)).on, false)
+  assert.equal(dayShows(w, day(2026, 10, 19)).on, true) // пн
+  assert.equal(dayShows(w, day(2026, 10, 20)).on, false) // вт — не его день
+  assert.equal(dayShows(w, day(2026, 10, 21)).on, true) // ср, последний день включительно
+  assert.equal(dayShows(w, day(2026, 10, 22)).on, false)
+  const t = dayShows({ timeFrom: '08:00', timeTo: '12:00' }, day(2026, 10, 21))
+  assert.deepEqual([t.on, t.all, t.timeText], [true, false, '8:00–12:00'])
+  assert.equal(dayShows({ timeFrom: '22:00', timeTo: '06:00' }, day(2026, 10, 21)).timeText, '22:00–6:00')
+  const b = dayShows({ breaks: true }, day(2026, 10, 21))
+  assert.deepEqual([b.on, b.all, b.breaks], [true, false, true])
+  assert.equal(dayShows({ dateFrom: '2026-12-31', dateTo: '2027-01-01' }, day(2027, 1, 1)).on, true)
+})

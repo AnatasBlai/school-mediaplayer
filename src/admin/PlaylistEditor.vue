@@ -30,6 +30,7 @@ import CountdownEditor from './CountdownEditor.vue'
 import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
 import SlideSettings from './SlideSettings.vue'
+import ShowCalendar from './ShowCalendar.vue'
 import { deckById, avgCardSeconds, startDecks } from '../decks.js'
 
 startPlaylist()
@@ -92,7 +93,8 @@ const snippetOf = (it) =>
   it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
-const screenTab = ref('') // '' — окно закрыто; layout | blank | ticker
+const calOpen = ref(false) // календарь показов
+const screenTab = ref('') // ''— окно закрыто; layout | blank | ticker
 const blankNow = computed(() => isBlanked(playlist.blank, now.value))
 const tickerNow = computed(() => tickerTexts(playlist.ticker, now.value).length > 0)
 const blankText = computed(() => (playlist.blank.on ? (blankNow.value ? 'вкл · сейчас погашен' : 'вкл · сейчас работает') : 'выключено'))
@@ -305,6 +307,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span>Бегущая строка</span>
           <b :class="{ on: playlist.ticker.on && tickerNow }">{{ tickerText }}</b>
         </button>
+        <button class="a-btn cal-btn" data-ro-allow @click="calOpen = true">📅 Календарь показов</button>
       </div>
 
       <!-- клик по блоку открывает экран в новой вкладке (кнопки внутри — свои действия) -->
@@ -399,6 +402,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </div>
 
     <ScreenSettings v-if="screenTab" :tab="screenTab" :now="now" @close="screenTab = ''" />
+    <ShowCalendar v-if="calOpen" :now="now" :locked="!!setItem" @close="calOpen = false" @open-slide="setId = $event" />
     <SlideSettings
       v-if="setItem"
       :item="setItem"
@@ -535,6 +539,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .set-line b.night {
   color: #c9a7ff;
+}
+.cal-btn {
+  margin-top: 6px;
 }
 .queue {
   min-width: 0;

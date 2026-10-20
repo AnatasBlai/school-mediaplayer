@@ -23,12 +23,8 @@ export function hasRules(w) {
  */
 export function ruleState(w, now = new Date(), isBreak = null) {
   if (!hasRules(w)) return { ok: true, reason: '' }
-  const today = isoDate(now)
-  if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return { ok: false, reason: 'дата «по» раньше даты «с»' }
-  if (w.dateFrom && today < w.dateFrom) return { ok: false, reason: `начнётся ${fmtDate(w.dateFrom)}` }
-  if (w.dateTo && today > w.dateTo) return { ok: false, reason: `закончился ${fmtDate(w.dateTo)}` }
-  const dow = now.getDay() || 7
-  if (w.days?.length && !w.days.includes(dow)) return { ok: false, reason: 'сегодня не его день' }
+  const day = dayRuleState(w, now)
+  if (!day.ok) return day
   if (w.timeFrom || w.timeTo) {
     const m = now.getHours() * 60 + now.getMinutes()
     const a = w.timeFrom ? minutes(w.timeFrom) : 0
@@ -38,6 +34,35 @@ export function ruleState(w, now = new Date(), isBreak = null) {
   }
   if (w.breaks && !isBreak?.(now)) return { ok: false, reason: 'сейчас не перемена' }
   return { ok: true, reason: '' }
+}
+
+/** Часть правил, зависящая только от календарного дня: даты «с/по» и дни недели (общая для ruleState и dayShows). */
+function dayRuleState(w, now) {
+  const today = isoDate(now)
+  if (w.dateFrom && w.dateTo && w.dateFrom > w.dateTo) return { ok: false, reason: 'дата «по» раньше даты «с»' }
+  if (w.dateFrom && today < w.dateFrom) return { ok: false, reason: `начнётся ${fmtDate(w.dateFrom)}` }
+  if (w.dateTo && today > w.dateTo) return { ok: false, reason: `закончился ${fmtDate(w.dateTo)}` }
+  const dow = now.getDay() || 7
+  if (w.days?.length && !w.days.includes(dow)) return { ok: false, reason: 'сегодня не его день' }
+  return { ok: true, reason: '' }
+}
+
+/**
+ * Идёт ли слайд в этот календарный день (для календаря показов): { on: false } или
+ * { on: true, all, timeText, breaks } — all: весь день; timeText «8:00–12:00» (через полночь — «22:00–6:00»).
+ */
+export function dayShows(w, date) {
+  if (!hasRules(w)) return { on: true, all: true, timeText: '', breaks: false }
+  if (!dayRuleState(w, date).ok) return { on: false }
+  let timeText = ''
+  if (w.timeFrom && w.timeTo) timeText = `${fmtTime(w.timeFrom)}–${fmtTime(w.timeTo)}`
+  else if (w.timeFrom) timeText = `с ${fmtTime(w.timeFrom)}`
+  else if (w.timeTo) timeText = `до ${fmtTime(w.timeTo)}`
+  // «с 0:00 до 24:00» и т. п. — всё равно весь день
+  const a = w.timeFrom ? minutes(w.timeFrom) : 0
+  const b = w.timeTo ? minutes(w.timeTo) : 24 * 60
+  if (timeText && a === 0 && b === 24 * 60) timeText = ''
+  return { on: true, all: !timeText && !w.breaks, timeText, breaks: !!w.breaks }
 }
 
 /**
