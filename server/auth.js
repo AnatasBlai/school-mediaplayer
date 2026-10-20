@@ -15,6 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
+import { logEvent } from './journal.js'
 
 const DATA = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
 const AUTH_FILE = path.join(DATA, 'auth.json')
@@ -148,11 +149,13 @@ const WRITE_RIGHTS = [
   [/^\/api\/screens\//, 'playlist'], // «убрать экран из списка» — в разделе «Плейлист»
   [/^\/api\/decks(\/|$)/, 'decks'],
   [/^\/api\/media(\/|$)/, 'media'],
+  [/^\/api\/journal\/[\w-]+\/revert$/, 'login'], // право на раздел записи проверяет journal.js
 ]
 const OPEN_WRITES = [/^\/api\/auth(\/|$)/, /^\/api\/screens$/, /^\/api\/decks\/[^/]+\/take$/] // отчёт экрана, «взять карточку», вход (проверяют себя сами)
 function rightFor(method, url) {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
     // содержимое снимков и пользователи — только администратору
+    if (/^\/api\/journal$/.test(url)) return 'login' // журнал — любому вошедшему
     return /^\/api\/(backup\/(snapshot\/|mirror$)|users(\/|$))/.test(url) ? 'admin' : null
   }
   if (OPEN_WRITES.some((re) => re.test(url))) return null
@@ -168,8 +171,20 @@ export function isAllowed(req) {
   if (!right || !readUsers().length) return { ok: true }
   const u = userOf(req)
   if (!u) return { ok: false, code: 401, error: 'Нужен вход в редактор' }
-  if (!hasRight(u, right)) return { ok: false, code: 403, error: 'Нет прав на этот раздел' }
+  if (right !== 'login' && !hasRight(u, right)) return { ok: false, code: 403, error: 'Нет прав на этот раздел' }
   return { ok: true }
+}
+
+/** Кто вошёл → { id, name } или null (для журнала правок). */
+export function whoIs(req) {
+  const u = userOf(req)
+  return u ? { id: u.id, name: u.name } : null
+}
+/** Есть ли у вошедшего право (нет пользователей — всё можно). */
+export function can(req, right) {
+  if (!readUsers().length) return true
+  const u = userOf(req)
+  return !!u && hasRight(u, right)
 }
 
 /** Заданы ли входы (для окна «Состояние системы»). */
@@ -232,6 +247,7 @@ function handleUsers(req, res, url) {
       const u = { id: crypto.randomBytes(4).toString('hex'), name: who.name, login: who.login, ...makeHash(b.password), rights: first ? [...RIGHTS] : cleanRights(b.rights), disabled: false }
       writeUsers([...users, u])
       if (first) startSession(res, u.id)
+      logEvent(req, 'system', `Пользователь «${u.name}» (${u.login}) создан`, first ? { who: { id: u.id, name: u.name } } : {})
       send(res, 200, { ok: true, user: publicUser(u) })
     })
   }
@@ -260,6 +276,7 @@ function handleUsers(req, res, url) {
       writeUsers(users)
       // сменили пароль или отключили — входы этого человека завершаются (свой — остаётся)
       if (pass.hash || disabled) dropSessions(id, self ? tokenOf(req) : '')
+      logEvent(req, 'system', `Пользователь «${u.name}» (${u.login}): ${pass.hash ? 'новый пароль, ' : ''}${disabled ? 'вход отключён' : 'права ' + (rights.join(', ') || 'только просмотр')}`)
       send(res, 200, { ok: true, user: publicUser(u) })
     })
   }
@@ -273,6 +290,7 @@ function handleUsers(req, res, url) {
       return send(res, 400, { ok: false, error: 'Должен остаться хотя бы один администратор' })
     writeUsers(users.filter((x) => x.id !== id))
     dropSessions(id)
+    logEvent(req, 'system', `Пользователь «${u.name}» (${u.login}) удалён`)
     return send(res, 200, { ok: true })
   }
 
@@ -296,6 +314,7 @@ export function handleAuth(req, res) {
   if (url === '/api/auth/logout' && req.method === 'POST') {
     const t = tokenOf(req)
     const s = readSessions()
+    if (t && s[t]) logEvent(req, 'system', 'Выход')
     if (t && s[t]) {
       delete s[t]
       writeJson(SESSIONS_FILE, s)
@@ -323,6 +342,7 @@ export function handleAuth(req, res) {
       if (u.disabled) return send(res, 403, { ok: false, error: 'Вход для этого пользователя отключён' })
       keys.forEach((k) => fails.delete(k))
       startSession(res, u.id)
+      logEvent(req, 'system', 'Вход', { who: { id: u.id, name: u.name } })
       send(res, 200, { ok: true, user: publicUser(u) })
     })
     return true
@@ -345,6 +365,7 @@ export function handleAuth(req, res) {
       Object.assign(users.find((x) => x.id === u.id), makeHash(b.next))
       writeUsers(users)
       dropSessions(u.id, tokenOf(req)) // на других компьютерах нужно войти заново
+      logEvent(req, 'system', 'Смена пароля')
       send(res, 200, { ok: true })
     })
     return true

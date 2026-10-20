@@ -16,7 +16,9 @@
 6. **Все записи — только после входа и по правам**: новый POST/PUT/PATCH/DELETE в API по умолчанию требует «admin»;
    нужное право (schedule/playlist/decks/media) впиши в таблицу `WRITE_RIGHTS` в server/auth.js; открытым без входа делай
    только отчёт/действие экрана (`OPEN_WRITES`). Нет права → 403, нет входа → 401.
-7. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
+7. **Любая новая запись данных в API → `logChange(req, area, before, after)`** (или `logEvent` для служебного) из
+   server/journal.js — иначе правка не попадёт в журнал правок и её нельзя будет откатить.
+8. Экран (`/`) не должен грузить код редактора: всё админское — только через динамический import (`src/main.js`).
 
 ## Стек и запуск
 
@@ -102,6 +104,9 @@ server/
                    без права → 403, GET открыт, кроме копий и /api/users; таблица WRITE_RIGHTS; нет пользователей — всё открыто),
                    /api/auth* и /api/users* (только admin; первого admin создаёт открытый POST), scrypt + сессии 30 дней (cookie
                    tablo_session), лимит 5 попыток по IP и по логину; migrateOldPassword() вызывает server.js (не импорт!)
+  journal.js       журнал правок: logChange(req, area, before, after, opts) / logEvent / resetGroups; группа = один человек + один раздел,
+                   пауза < 2 мин; перед группой файл «до» → data/history/<area>/<мс>.json; GET /api/journal?area&user&day&before&since&limit,
+                   POST /api/journal/<id>/revert (право на раздел записи — `can` из auth.js; в WRITE_RIGHTS это 'login'); startJournal() — чистка
   status.js        GET /api/status — версия, время работы, диск (diskSpace из backup.js), объём data/media, backupSummary(), пароль; без секретов
   screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
@@ -140,6 +145,7 @@ src/
     auth.js + AuthModals.vue + UsersModal.vue  вход по логину: window.fetch оборачивается (401 — окно входа и повтор, 403 —
                    плашка «Нет прав»), needLogin() для XHR; `can(право)`; раздел без права — `readonly` в AdminApp (плашка + capture-
                    перехват кликов/ввода в <main>); окно «Пользователи» (admin); кнопки в шапке AdminApp
+    JournalModal.vue окно «Журнал правок» (кнопка «Журнал» в шапке): фильтры раздел/человек/день, «Подробнее», откат с подтверждением
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения
     PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд»), сводка «Настройки экрана»
                    (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
@@ -201,7 +207,8 @@ from > to — через полночь. Нет файла → плейлист 
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
 **users.json** `{ users: [{ id, name, login, salt, hash, rights: [schedule|playlist|decks|media|admin], disabled }] }` (нет файла — входов нет, всё открыто)
 и **sessions.json** `{ токен: { exp, user } }`; старый **auth.json** при старте → пользователь admin, файл → `auth.json.old`; все три не в снимках копий
-(`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
+(`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **journal/<ГГГГ-ММ>.json** `{ items: [{ id, at, until, user, name, ip, area: schedule|playlist|decks|media|system, summary: [строки], version? /* файл в history/ */, kind?: 'revert', revertOf? }] }`
+и **history/<schedule|playlist|decks>/<мс>.json** (60 дней, но ≥ 50 версий на файл) — не в снимках копий и не в архивах. **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
 ## Поведение, которое легко сломать
 
@@ -290,5 +297,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.9.3 — правки вдвоём: заголовок `X-Base-Updated`, 409 с текущими данными, `merge3` на клиенте (src/merge.js, src/saver.js), плашка при совпавших местах; тесты tests/merge.test.js.
 
 - v0.9.4 — личные входы и права: users.json, логин+пароль, галочки Расписание/Плейлист/Колоды/Медиатека/Администратор, 403 без права, раздел «только смотреть», окно «Пользователи», переход со старого пароля.
+
+- v0.9.5 — журнал правок (server/journal.js, JournalModal.vue): кто/когда/что, группировка правок < 2 мин, откат любой правки расписания/плейлиста/колод (откат сам пишется и откатывается), медиатека и служебное — без отката.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

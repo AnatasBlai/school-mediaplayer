@@ -18,6 +18,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
+import { logEvent, resetGroups } from './journal.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = path.join(ROOT, 'data')
@@ -330,6 +331,7 @@ async function runRestore(name, only) {
       await fsp.copyFile(path.join(mirror, list[i]), dst)
     }
   }
+  resetGroups() // открытые записи журнала устарели
   if (files.includes('schedule.json')) broadcast('data', { updatedAt: now })
   if (files.includes('playlist.json')) broadcast('playlist', { updatedAt: now })
   if (files.includes('decks.json')) broadcast('decks', { updatedAt: now })
@@ -467,6 +469,7 @@ export function handleBackup(req, res) {
       const old = s.dir ? normDir(s.dir) : ''
       const changed = old && old.toLowerCase() !== dir.toLowerCase()
       Object.assign(s, { dir, period })
+      logEvent(req, 'system', `Настройки резервных копий: папка ${dir}, ${{ off: 'не делать', day: 'раз в день', week: 'раз в неделю', month: 'раз в месяц' }[period]}`)
       if (changed && d.move) start('move', () => moveBackup(old, dir))
       await save()
       notify()
@@ -475,7 +478,9 @@ export function handleBackup(req, res) {
     if (url === '/api/backup/run' && m === 'POST') {
       if (!load().dir) return json(res, 400, { ok: false, error: 'Сначала укажите папку' })
       lastTryAt = Date.now()
-      return json(res, start('backup', runBackup) ? 200 : 409, { ok: true })
+      const started = start('backup', runBackup)
+      if (started) logEvent(req, 'system', 'Резервная копия: запущена вручную')
+      return json(res, started ? 200 : 409, { ok: true })
     }
     if (url === '/api/backup/mirror' && m === 'GET') {
       if (!load().dir) return json(res, 400, { ok: false, error: 'Папка копий не указана' })
@@ -502,7 +507,9 @@ export function handleBackup(req, res) {
       const { name, files } = await readBody(req)
       const only = Array.isArray(files) ? files.map(String).filter((f) => SNAP_FILE.test(f)) : null
       if (only && !only.length) return json(res, 400, { ok: false, error: 'Не отмечено ни одного файла' })
-      return json(res, start('restore', () => runRestore(String(name || ''), only)) ? 200 : 409, { ok: true })
+      const started = start('restore', () => runRestore(String(name || ''), only))
+      if (started) logEvent(req, 'system', `Восстановление из копии ${String(name || '')}${only ? ': ' + only.join(', ') : ''}`)
+      return json(res, started ? 200 : 409, { ok: true })
     }
     json(res, 404, { ok: false, error: 'Нет такого адреса' })
   })().catch((e) => json(res, 500, { ok: false, error: e.message || String(e) }))

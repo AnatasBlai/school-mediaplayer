@@ -7,6 +7,7 @@
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
 //   /api/status  — состояние системы: диск, копии, версия (server/status.js)
+//   /api/journal* — журнал правок и откат (server/journal.js)
 //   /api/auth*   — входы и права; запись без входа — 401, без права на раздел — 403 (server/auth.js)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -20,6 +21,7 @@ import { handleBackup } from './server/backup.js'
 import { handleStatus } from './server/status.js'
 import { isAllowed, handleAuth } from './server/auth.js'
 import { baseConflict, nextUpdated } from './server/conflict.js'
+import { handleJournal, logChange } from './server/journal.js'
 
 export { MIME } from './server/mime.js'
 
@@ -81,6 +83,7 @@ function handleData(req, res) {
         parsed.updatedAt = nextUpdated(parsed.updatedAt, cur?.updatedAt)
         writeData(JSON.stringify(parsed, null, 2))
         res.end(JSON.stringify({ ok: true, updatedAt: parsed.updatedAt }))
+        logChange(req, 'schedule', cur, parsed)
         broadcast('data', { updatedAt: parsed.updatedAt })
       } catch (e) {
         res.statusCode = 400
@@ -127,7 +130,7 @@ export function handleApi(req, res) {
     handleScreens(req, res)
     return true
   }
-  return handleDecks(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
+  return handleJournal(req, res) || handleDecks(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
 }
 
 export function apiPlugin() {

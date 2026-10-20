@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { MIME } from './mime.js'
 import { broadcast } from './events.js'
 import { removeMediaFromPlaylist } from './playlist.js'
+import { logEvent } from './journal.js'
 import { removeMediaFromDecks } from './decks.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -149,6 +150,7 @@ async function upload(req, res, query) {
   const items = readList()
   items.push(item)
   writeList(items)
+  logEvent(req, 'media', `Добавлен файл «${item.name}»`)
   json(res, 200, { ok: true, item })
   broadcast('media')
 }
@@ -183,14 +185,17 @@ async function patch(req, res, id) {
   const items = readList()
   const item = items.find((x) => x.id === id)
   if (!item) return json(res, 404, { ok: false, error: 'Файл не найден' })
+  const was = { name: item.name, category: item.category }
   if ('name' in body) item.name = cleanText(body.name, 120) || item.name
   if ('category' in body) item.category = cleanText(body.category, 40)
   writeList(items)
+  if (item.name !== was.name) logEvent(req, 'media', `Переименован файл «${was.name}» → «${item.name}»`)
+  if (item.category !== was.category) logEvent(req, 'media', `Файл «${item.name}»: другая папка (${item.category || 'без папки'})`)
   json(res, 200, { ok: true, item })
   broadcast('media')
 }
 
-function remove(res, id) {
+function remove(req, res, id) {
   const items = readList()
   const i = items.findIndex((x) => x.id === id)
   if (i < 0) return json(res, 404, { ok: false, error: 'Файл не найден' })
@@ -198,8 +203,9 @@ function remove(res, id) {
   fs.rmSync(path.join(MEDIA_DIR, item.file), { force: true })
   fs.rmSync(path.join(THUMBS_DIR, id + '.jpg'), { force: true })
   writeList(items)
-  const removedFromPlaylist = removeMediaFromPlaylist(id)
-  removeMediaFromDecks(id)
+  logEvent(req, 'media', `Удалён файл «${item.name}». Вернуть его можно только из резервной копии`)
+  const removedFromPlaylist = removeMediaFromPlaylist(id, req, item.name)
+  removeMediaFromDecks(id, req, item.name)
   json(res, 200, { ok: true, removedFromPlaylist })
   broadcast('media')
 }
@@ -224,7 +230,7 @@ export function handleMediaApi(req, res) {
   } else if (!id && req.method === 'POST') run(upload(req, res, u.searchParams))
   else if (id && parts[1] === 'thumb' && req.method === 'PUT') run(putThumb(req, res, id))
   else if (id && !parts[1] && req.method === 'PATCH') run(patch(req, res, id))
-  else if (id && !parts[1] && req.method === 'DELETE') remove(res, id)
+  else if (id && !parts[1] && req.method === 'DELETE') remove(req, res, id)
   else json(res, 405, { ok: false, error: 'Метод не поддерживается' })
   return true
 }

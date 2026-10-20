@@ -9,6 +9,7 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
 import { baseConflict, nextUpdated } from './conflict.js'
+import { logChange } from './journal.js'
 import { THEME_KEYS as THEMES } from '../src/catalog.js'
 import { STARTER_DECKS } from './starterDecks.js'
 import { parseCards } from '../src/deckText.js'
@@ -137,20 +138,23 @@ export function handleDecks(req, res) {
     const p = { version: 1, updatedAt: nextUpdated(d.updatedAt, cur.updatedAt), decks: d.decks.map(cleanDeck).filter(Boolean) }
     writeJson(FILE, p)
     broadcast('decks', { updatedAt: p.updatedAt })
+    logChange(req, 'decks', cur, p)
     json(res, 200, { ok: true, updatedAt: p.updatedAt })
   })
   return true
 }
 
 /** Убирает удалённый файл медиатеки из карточек. */
-export function removeMediaFromDecks(id) {
+export function removeMediaFromDecks(id, req, fileName = '') {
   if (!fs.existsSync(FILE)) return
   const p = readDecks()
+  const before = JSON.parse(JSON.stringify(p))
   let changed = false
   for (const d of p.decks) for (const c of d.cards) if (c.media === id) delete c.media, (changed = true)
   if (changed) {
     p.updatedAt = Date.now()
     writeJson(FILE, p)
     broadcast('decks', { updatedAt: p.updatedAt })
+    logChange(req, 'decks', before, p, { single: true, note: `Из-за удаления файла «${fileName}»` })
   }
 }

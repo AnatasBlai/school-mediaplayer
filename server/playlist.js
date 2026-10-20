@@ -8,6 +8,7 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
 import { baseConflict, nextUpdated } from './conflict.js'
+import { logChange } from './journal.js'
 import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES } from '../src/catalog.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -196,8 +197,9 @@ function writePlaylist(p) {
 }
 
 /** Убирает из плейлиста слайды с удалённым файлом (у новости и победителей — только фото). Возвращает, сколько слайдов убрано. */
-export function removeMediaFromPlaylist(mediaId) {
+export function removeMediaFromPlaylist(mediaId, req, fileName = '') {
   const p = readPlaylist()
+  const before = JSON.parse(JSON.stringify(p)) // слайды ниже правятся на месте
   let touched = false
   const items = p.items.filter((it) => {
     if (it.media !== mediaId) return true
@@ -207,7 +209,11 @@ export function removeMediaFromPlaylist(mediaId) {
     return true
   })
   const removed = p.items.length - items.length
-  if (touched) writePlaylist({ ...p, updatedAt: Date.now(), urgent: cleanUrgent(p.urgent, items), items })
+  if (touched) {
+    const after = { ...p, updatedAt: Date.now(), urgent: cleanUrgent(p.urgent, items), items }
+    writePlaylist(after)
+    logChange(req, 'playlist', before, after, { single: true, note: `Из-за удаления файла «${fileName}»` })
+  }
   return removed
 }
 
@@ -249,6 +255,7 @@ export function handlePlaylist(req, res) {
       items,
     }
     writePlaylist(p)
+    logChange(req, 'playlist', cur, p)
     json(res, 200, { ok: true, updatedAt: p.updatedAt })
   })
 }

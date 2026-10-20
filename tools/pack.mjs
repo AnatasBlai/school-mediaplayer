@@ -31,6 +31,7 @@ const FILES = [
   'tools/autostart.ps1',
   'src/deckText.js', // его импортирует server/decks.js
   'src/catalog.js', // его импортируют server/playlist.js и server/decks.js
+  'src/dataDiff.js', // его импортирует server/journal.js
 ]
 const DIRS = ['server', 'dist']
 // kiosk-settings.txt — настройки конкретного ПК: при обновлении не затираем

@@ -16,6 +16,7 @@ import { silentList, screenLabel } from './screens.js'
 import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
 import UsersModal from './UsersModal.vue'
+import JournalModal from './JournalModal.vue'
 import { auth, can, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
 
@@ -36,6 +37,7 @@ const fromHash = () => (SECTIONS.some((s) => s.id === location.hash.slice(1)) ? 
 const section = ref(fromHash())
 const importOpen = ref(false) // окно «Вставить из Excel»
 const statusOpen = ref(false) // окно «Состояние системы»
+const journalOpen = ref(false) // окно «Журнал правок»
 // раздел без права виден только для чтения: сверху плашка, а любые действия в разделе гасятся (сервер всё равно ответит 403)
 const readonly = computed(() => !can(section.value))
 const BLOCKED = ['click', 'dblclick', 'mousedown', 'keydown', 'keypress', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop', 'dragstart', 'contextmenu']
@@ -105,6 +107,7 @@ const status = computed(() => {
       <button v-if="silentText" class="silent" :title="silentText + ' — показать «Сейчас на экране»'" @click="goScreens">⚠ {{ silentText }}</button>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
+      <button v-if="!auth.required || auth.user" class="open xl" @click="journalOpen = true">Журнал</button>
       <button class="open xl" @click="statusOpen = true">
         <span v-if="sysLevel" class="sdot" :class="sysLevel" :title="SYS_TITLE[sysLevel]"></span>Состояние
       </button>
@@ -129,6 +132,7 @@ const status = computed(() => {
     </main>
     <ScheduleImport v-if="importOpen" @close="importOpen = false" />
     <SystemStatus v-if="statusOpen" @close="statusOpen = false" />
+    <JournalModal v-if="journalOpen" @close="journalOpen = false" />
     <UsersModal v-if="auth.usersOpen" @close="auth.usersOpen = false" />
     <AuthModals />
   </div>

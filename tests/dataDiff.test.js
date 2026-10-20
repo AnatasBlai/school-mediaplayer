@@ -59,3 +59,12 @@ test('diffMedia: добавленные позже, зеркало', () => {
   assert.match(d[2], /не вернутся/)
   assert.deepEqual(diffMedia({ items: [m('a')] }, { items: [m('a')] }), [])
 })
+
+test('журнал: формулировки «добавлены / удалены» вместо возврата из копии', () => {
+  const a = { items: [{ id: 'a1', type: 'changes' }] }
+  const b = { items: [{ id: 'a1', type: 'changes' }, { id: 'b2', type: 'news', title: 'Кросс' }] }
+  assert.deepEqual(diffPlaylist(a, b, { journal: true }), ['Добавлены слайды: «Кросс»'])
+  assert.deepEqual(diffPlaylist(b, a, { journal: true }), ['Удалены слайды: «Кросс»'])
+  const d = { decks: [{ id: 'd1', name: 'Факты', cards: [] }] }
+  assert.deepEqual(diffDecks({ decks: [] }, d, { journal: true }), ['Колода «Факты»: добавлена'])
+})

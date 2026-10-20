@@ -91,7 +91,8 @@ export function diffSchedule(a, b) {
 
 // ---------- плейлист ----------
 
-/** Название слайда для людей. dict — необязательно: { media: { id: имя }, decks: { id: имя } }. */
+/** Название слайда для людей. dict — необязательно: { media: { id: имя }, decks: { id: имя } }.
+ *  dict.journal = true в diffPlaylist — формулировки журнала («добавлены / удалены»), а не возврата из копии. */
 export function slideName(it, dict = {}) {
   if (it.type === 'schedule') return it.grades?.length ? 'Расписание: ' + it.grades.join(', ') + ' кл.' : 'Расписание: все параллели'
   if (it.type === 'changes') return 'Изменения в расписании'
@@ -111,11 +112,11 @@ export function diffPlaylist(a, b, dict = {}) {
   const back = ib.filter((x) => !ma.has(x.id))
   const gone = ia.filter((x) => !mb.has(x.id))
   const changed = ib.filter((x) => ma.has(x.id) && !same(x, ma.get(x.id)))
-  if (back.length) out.push('Будут возвращены слайды: ' + names(back.map((x) => slideName(x, dict))))
-  if (gone.length) out.push('Пропадут слайды, добавленные позже: ' + names(gone.map((x) => slideName(x, dict))))
+  if (back.length) out.push((dict.journal ? 'Добавлены слайды: ' : 'Будут возвращены слайды: ') + names(back.map((x) => slideName(x, dict))))
+  if (gone.length) out.push((dict.journal ? 'Удалены слайды: ' : 'Пропадут слайды, добавленные позже: ') + names(gone.map((x) => slideName(x, dict))))
   if (changed.length) out.push('Изменены: ' + names(changed.map((x) => slideName(x, dict))))
   const common = (list, other) => list.filter((x) => other.has(x.id)).map((x) => x.id)
-  if (!same(common(ia, mb), common(ib, ma))) out.push('Порядок слайдов изменится')
+  if (!same(common(ia, mb), common(ib, ma))) out.push(dict.journal ? 'Порядок слайдов изменён' : 'Порядок слайдов изменится')
   const settings = []
   if ((a?.layout || 'full') !== (b?.layout || 'full')) settings.push('шаблон')
   if (!same(a?.blank, b?.blank)) settings.push('гашение экрана')
@@ -127,12 +128,12 @@ export function diffPlaylist(a, b, dict = {}) {
 
 // ---------- колоды ----------
 
-export function diffDecks(a, b) {
+export function diffDecks(a, b, opts = {}) {
   const out = []
   const da = new Map(arr(a?.decks).map((d) => [d.id, d]))
   const db = new Map(arr(b?.decks).map((d) => [d.id, d]))
-  for (const [id, d] of db) if (!da.has(id)) out.push(`Колода «${d.name}»: будет возвращена`)
-  for (const [id, d] of da) if (!db.has(id)) out.push(`Колода «${d.name}»: пропадёт (добавлена позже)`)
+  for (const [id, d] of db) if (!da.has(id)) out.push(`Колода «${d.name}»: ${opts.journal ? 'добавлена' : 'будет возвращена'}`)
+  for (const [id, d] of da) if (!db.has(id)) out.push(`Колода «${d.name}»: ${opts.journal ? 'удалена' : 'пропадёт (добавлена позже)'}`)
   for (const [id, y] of db) {
     const x = da.get(id)
     if (!x) continue

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { handleApi, MIME } from './api.js'
 import { startBackupScheduler } from './server/backup.js'
 import { migrateOldPassword } from './server/auth.js'
+import { startJournal } from './server/journal.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(ROOT, 'dist')
@@ -49,6 +50,7 @@ const server = http.createServer((req, res) => {
 
 // резервные копии по расписанию — только на боевом сервере
 startBackupScheduler()
+startJournal() // чистка старых версий в data/history/
 
 server.listen(PORT, '0.0.0.0', () => {
   const lan = []
