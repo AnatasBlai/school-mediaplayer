@@ -325,11 +325,13 @@ const sizes = computed(() => {
   const n = state.settings.lessonsCount
   const areaW = 1414
   const colW = (areaW - (cols - 1) * 14) / cols
-  const cellH = Math.min(60, Math.max(36, (isChanges.value ? (props.editable ? 670 : 740) : 610) / (n + 0.24 * (n - 1))))
+  // плашка «Уроки закончились» забирает ~86 px высоты — ужимаем строки и подписи классов
+  const after = afterLessons.value && !isChanges.value
+  const cellH = Math.min(60, Math.max(36, (isChanges.value ? (props.editable ? 670 : 740) : after ? 560 : 610) / (n + 0.24 * (n - 1))))
   return {
     '--cell-h': cellH + 'px',
     '--cell-font': Math.round(Math.min(isChanges.value ? 22 : 21, Math.max(13, colW * 0.075), cellH * 0.36)) + 'px',
-    '--label-font': Math.round(Math.min(130, colW * 0.48)) + 'px',
+    '--label-font': Math.round(Math.min(after ? 92 : 130, colW * 0.48)) + 'px',
   }
 })
 
