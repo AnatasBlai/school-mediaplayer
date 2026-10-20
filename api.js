@@ -107,7 +107,7 @@ export function handleApi(req, res) {
     handleStatus(req, res)
     return true
   }
-  if (url === '/api/screens') {
+  if (url === '/api/screens' || url.startsWith('/api/screens/')) {
     handleScreens(req, res)
     return true
   }

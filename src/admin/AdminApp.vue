@@ -11,6 +11,8 @@ import { playlist, startPlaylist } from '../playlist.js'
 import { startDecks } from '../decks.js'
 import SystemStatus from './SystemStatus.vue'
 import { level as sysLevel, startStatus } from './systemStatus.js'
+import { silentList, screenLabel } from './screens.js'
+import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
 import { auth, checkAuth, logout } from './auth.js' // подключение auth.js ставит обработку 401 на все запросы
 import './ui.css'
@@ -52,6 +54,18 @@ onBeforeUnmount(() => {
   window.removeEventListener('drop', stopDrop)
 })
 
+// плашка «экран не отвечает»: один экран — со временем, несколько — списком
+const silentText = computed(() => {
+  const l = silentList.value
+  if (!l.length) return ''
+  if (l.length === 1) return `Экран «${screenLabel(l[0])}» не отвечает ${Math.max(5, Math.round(l[0].silentMs / 60000))} мин`
+  return `Не отвечают ${l.length} ${plural(l.length, 'экран', 'экрана', 'экранов')}: ${l.map(screenLabel).join(', ')}`
+})
+function goScreens() {
+  go('playlist')
+  setTimeout(() => document.getElementById('now-on-screen')?.scrollIntoView({ block: 'center' }), 50)
+}
+
 const status = computed(() => {
   if (!connected.value || saveStatus.value === 'offline')
     return { cls: 'bad', text: 'Нет связи с сервером — правки сохранятся только в этом браузере' }
@@ -75,6 +89,7 @@ const status = computed(() => {
       </div>
       <button v-if="section === 'schedule'" class="open xl" @click="importOpen = true">Вставить из Excel</button>
       <div v-if="playlist.urgent.on" class="urgent" title="Откройте раздел «Плейлист», чтобы отключить">⚠ Срочный режим включён</div>
+      <button v-if="silentText" class="silent" :title="silentText + ' — показать «Сейчас на экране»'" @click="goScreens">⚠ {{ silentText }}</button>
       <div class="status" :class="status.cls">{{ status.text }}</div>
       <a class="open" href="/" target="_blank">Открыть экран ↗</a>
       <button class="open xl" @click="statusOpen = true">
@@ -166,6 +181,21 @@ const status = computed(() => {
   background: #b3261e;
   color: #fff;
   font-weight: 800;
+}
+.silent {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: #e8b630;
+  color: #1d1f24;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
 .status.ok {
   color: #7fd18b;

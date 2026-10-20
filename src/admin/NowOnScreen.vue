@@ -2,24 +2,20 @@
 // «Сейчас на экране»: карточка на каждый экран, который сообщал о себе серверу.
 import { computed } from 'vue'
 import { playlist, mediaById, slideTitle, thumbUrl } from '../playlist.js'
-import { screens, startScreens, serverNow, isOnline } from './screens.js'
+import { screens, startScreens, serverNow, isOnline, visibleScreens, screenLabel as label, removeScreen } from './screens.js'
 
 startScreens()
 
-const HIDE_OFFLINE = 12 * 3600 * 1000 // экран без связи дольше 12 ч не показываем
-
-const label = (s) => s.name || 'Экран ' + s.ip
 const lastSeen = (s) => Math.max(s.seen, s.goneAt || 0)
 
 const list = computed(() => {
   void screens.now // пересчёт раз в секунду
-  const all = screens.items.map((s) => ({ ...s, online: isOnline(s) }))
-  // тот же компьютер с другим id (очистили данные браузера, открыли другой браузер) — старую запись прячем
-  const live = new Set(all.filter((s) => s.online).map((s) => label(s) + '|' + s.ip))
-  return all
-    .filter((s) => s.online || (!live.has(label(s) + '|' + s.ip) && serverNow() - lastSeen(s) < HIDE_OFFLINE))
-    .sort((a, b) => b.online - a.online || lastSeen(b) - lastSeen(a))
+  return visibleScreens.value.map((s) => ({ ...s, online: isOnline(s) })).sort((a, b) => b.online - a.online || lastSeen(b) - lastSeen(a))
 })
+
+function remove(s) {
+  if (confirm(`Экран «${label(s)}» больше не используется?`)) removeScreen(s.id)
+}
 
 function fmtAgo(ms) {
   const s = Math.max(0, Math.round(ms / 1000))
@@ -53,7 +49,7 @@ function view(s) {
 </script>
 
 <template>
-  <div class="now">
+  <div id="now-on-screen" class="now">
     <div v-if="screens.loaded && !list.length" class="none">
       Экраны пока не на связи. Откройте экран (кнопка «Открыть экран ↗») — он появится здесь.
     </div>
@@ -79,6 +75,7 @@ function view(s) {
           </div>
         </template>
         <div v-else class="sub bad">Нет связи {{ fmtAgo(serverNow() - lastSeen(s)) }}</div>
+        <button v-if="!s.online" class="rm" @click="remove(s)">Убрать из списка</button>
       </div>
     </div>
   </div>
@@ -109,6 +106,22 @@ function view(s) {
 .scr.offline {
   border-color: #5a2f2a;
   opacity: 0.75;
+}
+.rm {
+  align-self: flex-start;
+  margin-top: 4px;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: #3b404a;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rm:hover {
+  background: #4a505c;
 }
 .thumb {
   flex: 0 0 auto;

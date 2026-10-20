@@ -141,7 +141,7 @@ src/
     NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
-    NowOnScreen.vue + screens.js — «Сейчас на экране»; MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
+    NowOnScreen.vue + screens.js — «Сейчас на экране» («Убрать из списка» у экрана без связи), silentList → жёлтая плашка в шапке AdminApp (логика — src/screenAlerts.js: >5 мин без связи, учебное время `inSchoolHours` из bells.js, был на связи сегодня/в прошлый учебный день); MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
   components/
     ScheduleBoard.vue табло 1920×1080: вкладки 5…11 + «Изм.», колонки, звонки, клавиатура редактора. Пропсы editable,
                    tabs, seconds, run, playing; emit done/tab. dayKey: Вс → Пн; на экране день без уроков → ближайший
@@ -193,7 +193,7 @@ from > to — через полночь. Нет файла → плейлист 
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
 **auth.json** `{ salt, hash }` (нет файла — пароля нет) и **sessions.json** `{ токен: expiresAt }` — пароль и входы; не в снимках копий
-(`isDataFile`) и не в архивах pack.mjs. **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
+(`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
 ## Поведение, которое легко сломать
 
@@ -269,5 +269,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 Сделано в этапе 9:
 - v0.9.0 — окно «Состояние системы» (`/api/status`, server/status.js; SystemStatus.vue): диск, копии, экраны, часы, пароль, точка в шапке.
+- v0.9.1 — экраны помнятся в `data/screens.json`, кнопка «Убрать из списка», жёлтая плашка «Экран не отвечает» в шапке редактора (только в учебное время), строка «Экраны» в «Состоянии» учитывает то же правило.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

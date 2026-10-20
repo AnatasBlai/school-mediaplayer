@@ -1,6 +1,7 @@
 // Экраны и что они сейчас показывают (GET /api/screens, обновление по SSE 'screens').
 import { computed, reactive } from 'vue'
-import { onServerEvent } from '../store.js'
+import { onServerEvent, state, maxLessonOfDay } from '../store.js'
+import { silentScreens } from '../screenAlerts.js'
 
 export const ONLINE_MS = 75_000 // экран шлёт отчёт раз в 30 с; дольше 75 с тишины — считаем, что связи нет
 
@@ -23,6 +24,25 @@ async function load() {
 /** Время по часам сервера. */
 export const serverNow = () => screens.now + screens.skew
 export const isOnline = (s) => serverNow() - s.seen < ONLINE_MS
+
+export const screenLabel = (s) => s.name || 'Экран ' + s.ip
+
+/** Экраны для списка: тот же компьютер с другим id (очистили данные браузера, другой браузер) — старую запись прячем. */
+export const visibleScreens = computed(() => {
+  const live = new Set(screens.items.filter(isOnline).map((s) => screenLabel(s) + '|' + s.ip))
+  return screens.items.filter((s) => isOnline(s) || !live.has(screenLabel(s) + '|' + s.ip))
+})
+
+/** Экраны, которые молчат в учебное время (плашка в шапке, строка «Экраны» в «Состоянии»). */
+export const silentList = computed(() => {
+  void screens.now
+  return silentScreens(visibleScreens.value, serverNow(), { bells: state.settings.bells, maxLessonOf: maxLessonOfDay, online: isOnline })
+})
+
+export async function removeScreen(id) {
+  await fetch('/api/screens/' + encodeURIComponent(id), { method: 'DELETE' })
+  await load()
+}
 
 /** id слайдов, которые сейчас идут хоть на одном экране на связи. */
 export const onScreenIds = computed(() => new Set(screens.items.filter(isOnline).map((s) => s.slide.id)))

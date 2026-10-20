@@ -81,6 +81,12 @@ export function bellStatus(bells, now, maxLesson) {
   return { kind: 'after', bell: list[list.length - 1] }
 }
 
+/** Учебное время: от начала первого звонка до конца последнего (в выходной и без уроков — нет). */
+export function inSchoolHours(now, bells, maxLesson) {
+  const k = bellStatus(bells, now, maxLesson).kind
+  return k === 'lesson' || k === 'break'
+}
+
 export function plural(n, one, few, many) {
   const a = Math.abs(n) % 100
   const b = a % 10

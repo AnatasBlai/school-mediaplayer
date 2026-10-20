@@ -1,6 +1,6 @@
 // Состояние системы (GET /api/status): загрузка, проверки и общий уровень для точки в шапке редактора.
 import { computed, reactive } from 'vue'
-import { isOnline, screens, startScreens } from './screens.js'
+import { isOnline, screens, startScreens, silentList, screenLabel } from './screens.js'
 import { fmtSize } from './mediaApi.js'
 
 const GB = 1024 ** 3
@@ -70,11 +70,15 @@ export const rows = computed(() => {
 
   const items = screens.items
   const on = items.filter(isOnline).length
+  const silent = silentList.value
+  const warn = silent.length || (items.length && !on)
   out.push({
     name: 'Экраны',
-    level: items.length && !on ? 'warn' : 'ok',
-    value: items.length ? `на связи ${on} из ${items.length}` : 'ни один экран ещё не выходил на связь',
-    hint: items.length && !on ? 'Проверьте, включены ли телевизоры и открыт ли сайт' : '',
+    level: warn ? 'warn' : 'ok',
+    value: items.length
+      ? `на связи ${on} из ${items.length}` + (silent.length ? `; не отвечают: ${silent.map(screenLabel).join(', ')}` : '')
+      : 'ни один экран ещё не выходил на связь',
+    hint: warn ? 'Проверьте, включены ли телевизоры и открыт ли сайт' : '',
   })
 
   const min = Math.round(Math.abs(d.skew) / 60000)
