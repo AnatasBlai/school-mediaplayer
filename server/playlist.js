@@ -81,7 +81,7 @@ function cleanGroup(g) {
 }
 
 /** Приводит слайд к допустимому виду; null — выбросить. */
-function cleanItem(x) {
+export function cleanItem(x) {
   if (!x || !TYPES.includes(x.type)) return null
   const it = {
     id: /^[a-z0-9]{4,32}$/.test(x.id) ? x.id : newId(),

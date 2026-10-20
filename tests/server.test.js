@@ -1,0 +1,51 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { cleanItem } from '../server/playlist.js'
+import { cleanDeck } from '../server/decks.js'
+
+test('cleanItem: неизвестный тип и пустое → null', () => {
+  assert.equal(cleanItem({ type: 'bogus' }), null)
+  assert.equal(cleanItem(null), null)
+})
+
+test('cleanItem: countdown без даты → null, с датой — ок', () => {
+  assert.equal(cleanItem({ type: 'countdown', title: 'x' }), null)
+  assert.equal(cleanItem({ type: 'countdown', date: '2026-13' }), null)
+  const it = cleanItem({ type: 'countdown', date: '2026-10-20', time: '25:00' })
+  assert.equal(it.date, '2026-10-20')
+  assert.equal(it.time, '')
+})
+
+test('cleanItem: id — плохой заменяется, хороший остаётся', () => {
+  assert.equal(cleanItem({ type: 'schedule', id: 'abc123' }).id, 'abc123')
+  const bad = cleanItem({ type: 'schedule', id: 'Плохой id!' })
+  assert.match(bad.id, /^[a-z0-9]{4,32}$/)
+})
+
+test('cleanItem: лишние поля выбрасываются', () => {
+  const it = cleanItem({ type: 'changes', id: 'ch01', hack: 1, media: 'abc', fit: 'cover', skipEmpty: true })
+  assert.equal(it.hack, undefined)
+  assert.equal(it.media, undefined)
+  assert.equal(it.fit, undefined)
+  assert.equal(cleanItem({ type: 'image', media: 'abc12', evil: 1 }).evil, undefined)
+  assert.equal(cleanItem({ type: 'image' }), null) // без фото
+})
+
+test('cleanItem: duration 3…3600', () => {
+  const dur = (v) => cleanItem({ type: 'schedule', duration: v }).duration
+  assert.equal(dur(1), 3)
+  assert.equal(dur(99999), 3600)
+  assert.equal(dur(30), 30)
+  assert.equal(dur('abc'), 15) // по умолчанию
+})
+
+test('cleanDeck', () => {
+  assert.equal(cleanDeck(null), null)
+  const d = cleanDeck({ id: 'ПЛОХО', name: '', theme: 'нет', factTime: 1, hack: 1, cards: [{ type: 'fact', text: 'a' }, { type: 'zzz' }] })
+  assert.match(d.id, /^[a-z0-9]{4,32}$/)
+  assert.equal(d.name, 'Колода')
+  assert.equal(d.theme, '6')
+  assert.equal(d.factTime, 3)
+  assert.equal(d.hack, undefined)
+  assert.equal(d.cards.length, 1)
+})

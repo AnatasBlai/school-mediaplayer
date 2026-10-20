@@ -38,7 +38,7 @@ function cleanCard(x) {
   return c
 }
 
-function cleanDeck(x) {
+export function cleanDeck(x) {
   if (!x || typeof x !== 'object') return null
   return {
     id: ID.test(x.id) ? x.id : newId(),
