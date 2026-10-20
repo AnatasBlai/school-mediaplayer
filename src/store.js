@@ -1,6 +1,7 @@
 import { reactive, ref, watch } from 'vue'
 import { createDefaultData, GRADES } from './defaultData.js'
 import { bellsForDay, bellStatus } from './bells.js'
+import { makeSaver } from './saver.js'
 
 const LS_KEY = 'shedule-data-v1'
 
@@ -34,15 +35,35 @@ function clamp(v, a, b) {
   return Math.min(b, Math.max(a, v))
 }
 
-function apply(d) {
+function applyDoc(n) {
   applyingRemote = true
-  const n = normalize(d)
   state.updatedAt = n.updatedAt
   state.settings = n.settings
   state.schedule = n.schedule
   state.changes = n.changes
   lastProbe = probeOf()
   Promise.resolve().then(() => (applyingRemote = false))
+}
+
+const saver = makeSaver({
+  url: '/api/data',
+  status: saveStatus,
+  snapshot: () => JSON.parse(JSON.stringify(state)),
+  normalize,
+  applyDoc,
+  beforeSend: (doc) => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(doc))
+    } catch {
+      /* ignore */
+    }
+  },
+})
+
+function apply(d) {
+  const n = normalize(d)
+  applyDoc(n)
+  saver.setBase(n)
 }
 
 export async function loadData() {
@@ -63,7 +84,7 @@ export async function loadData() {
     /* сервера нет — работаем из браузера */
   }
   const ls = readLocal()
-  if (ls) apply(ls)
+  if (ls) applyDoc(normalize(ls)) // базы нет: свежие данные сервера потом не будут приняты за старые
   saveStatus.value = 'offline'
 }
 
@@ -76,27 +97,8 @@ function readLocal() {
   }
 }
 
-async function pushToServer() {
-  const json = JSON.stringify(state)
-  try {
-    localStorage.setItem(LS_KEY, json)
-  } catch {
-    /* ignore */
-  }
-  try {
-    saveStatus.value = 'saving'
-    const r = await fetch('/api/data', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: json,
-    })
-    saveStatus.value = r.ok ? 'saved' : 'offline'
-  } catch {
-    saveStatus.value = 'offline'
-  }
-}
+const pushToServer = () => saver.push()
 
-let timer = null
 watch(
   state,
   () => {
@@ -105,8 +107,7 @@ watch(
     if (probe === lastProbe) return
     lastProbe = probe
     state.updatedAt = Date.now()
-    clearTimeout(timer)
-    timer = setTimeout(pushToServer, 300)
+    saver.schedule()
   },
   { deep: true },
 )
@@ -116,10 +117,7 @@ async function pollRemote() {
   try {
     const r = await fetch('/api/data', { cache: 'no-store' })
     if (!r.ok) return
-    const d = await r.json()
-    if ((Number(d.updatedAt) || 0) > state.updatedAt) {
-      apply(d)
-    }
+    await saver.receive(await r.json())
   } catch {
     /* ignore */
   }
@@ -166,7 +164,7 @@ export async function startSync({ reloadOnRestart = false } = {}) {
     boot = b
   })
   es.addEventListener('data', (e) => {
-    if ((Number(JSON.parse(e.data).updatedAt) || 0) > state.updatedAt) pollRemote()
+    if ((Number(JSON.parse(e.data).updatedAt) || 0) > saver.baseUpdated()) pollRemote()
   })
   // EventSource сам переподключается через 3 с (retry), здесь только отмечаем обрыв
   es.onerror = () => (connected.value = false)

@@ -8,6 +8,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
+import { baseConflict, nextUpdated } from './conflict.js'
 import { THEME_KEYS as THEMES } from '../src/catalog.js'
 import { STARTER_DECKS } from './starterDecks.js'
 import { parseCards } from '../src/deckText.js'
@@ -131,7 +132,9 @@ export function handleDecks(req, res) {
       return json(res, 400, { ok: false, error: 'Неверный JSON' })
     }
     if (!Array.isArray(d.decks)) return json(res, 400, { ok: false, error: 'Нет списка колод' })
-    const p = { version: 1, updatedAt: Number(d.updatedAt) || Date.now(), decks: d.decks.map(cleanDeck).filter(Boolean) }
+    const cur = readDecks()
+    if (baseConflict(req, cur.updatedAt)) return json(res, 409, { ok: false, conflict: true, current: cur })
+    const p = { version: 1, updatedAt: nextUpdated(d.updatedAt, cur.updatedAt), decks: d.decks.map(cleanDeck).filter(Boolean) }
     writeJson(FILE, p)
     broadcast('decks', { updatedAt: p.updatedAt })
     json(res, 200, { ok: true, updatedAt: p.updatedAt })

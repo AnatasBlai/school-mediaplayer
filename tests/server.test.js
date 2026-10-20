@@ -49,3 +49,12 @@ test('cleanDeck', () => {
   assert.equal(d.hack, undefined)
   assert.equal(d.cards.length, 1)
 })
+
+test('baseConflict: новее базы — конфликт; нет заголовка — пишем как раньше', async () => {
+  const { baseConflict, nextUpdated } = await import('../server/conflict.js')
+  assert.equal(baseConflict({ headers: { 'x-base-updated': '100' } }, 200), true)
+  assert.equal(baseConflict({ headers: { 'x-base-updated': '200' } }, 200), false)
+  assert.equal(baseConflict({ headers: {} }, 200), false)
+  assert.equal(nextUpdated(150, 200), 201) // часы клиента отстают — версия всё равно растёт
+  assert.equal(nextUpdated(300, 200), 300)
+})

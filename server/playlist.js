@@ -7,6 +7,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
+import { baseConflict, nextUpdated } from './conflict.js'
 import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES } from '../src/catalog.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -235,10 +236,12 @@ export function handlePlaylist(req, res) {
       return json(res, 400, { ok: false, error: 'Неверный JSON' })
     }
     if (!Array.isArray(d.items)) return json(res, 400, { ok: false, error: 'Нет списка слайдов' })
+    const cur = readPlaylist()
+    if (baseConflict(req, cur.updatedAt)) return json(res, 409, { ok: false, conflict: true, current: cur })
     const items = d.items.map(cleanItem).filter(Boolean)
     const p = {
       version: 1,
-      updatedAt: Number(d.updatedAt) || Date.now(),
+      updatedAt: nextUpdated(d.updatedAt, cur.updatedAt),
       layout: cleanLayout(d.layout),
       blank: cleanBlank(d.blank),
       ticker: cleanTicker(d.ticker),

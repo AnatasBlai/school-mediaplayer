@@ -2,6 +2,7 @@
 // Редактор (/admin): открывается в отдельной вкладке. Правки сразу уходят на сервер и видны на экранах.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { saveStatus, connected } from '../store.js'
+import { syncNotice } from '../saver.js'
 import ScheduleBoard from '../components/ScheduleBoard.vue'
 import MediaLibrary from './MediaLibrary.vue'
 import PlaylistEditor from './PlaylistEditor.vue'
@@ -98,6 +99,7 @@ const status = computed(() => {
       <button class="open xl" @click="auth.passOpen = true">🔒 Пароль</button>
       <button v-if="auth.required" class="open xl" @click="logout">Выйти</button>
     </header>
+    <div v-if="syncNotice" class="sync-note" :class="{ err: syncNotice.error }" role="status">{{ syncNotice.text }}</div>
     <main class="work">
       <div v-if="section === 'schedule'" class="board">
         <ScheduleBoard editable />
@@ -173,6 +175,23 @@ const status = computed(() => {
   white-space: nowrap;
   font-weight: 700;
   color: #c9ccd3;
+}
+.sync-note {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: min(900px, 94vw);
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #3d7be0;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.sync-note.err {
+  background: #b3261e;
 }
 .urgent {
   white-space: nowrap;

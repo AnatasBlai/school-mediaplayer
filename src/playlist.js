@@ -6,6 +6,7 @@ import { deckById } from './decks.js'
 import { countdownState } from './rules.js'
 import { plural } from './bells.js'
 import { winnerScreens, listCols, makeGroup } from './winners.js'
+import { makeSaver } from './saver.js'
 
 // ticker — бегущая строка: { on, speed: 'slow'|'normal', items: [{ text, until: 'ГГГГ-ММ-ДД'|'' }] }
 // blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
@@ -99,21 +100,48 @@ let applying = false
 let lastProbe = ''
 const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.urgent, playlist.ticker, playlist.items])
 
-function apply(d) {
-  applying = true
-  playlist.updatedAt = Number(d.updatedAt) || 0
-  playlist.layout = d.layout === 'panel' ? 'panel' : 'full'
-  playlist.blank = { on: !!d.blank?.on, periods: Array.isArray(d.blank?.periods) ? d.blank.periods : [] }
-  playlist.urgent = { on: !!d.urgent?.on, id: String(d.urgent?.id || '') }
-  playlist.ticker = {
-    on: !!d.ticker?.on,
-    speed: d.ticker?.speed === 'slow' ? 'slow' : 'normal',
-    items: Array.isArray(d.ticker?.items) ? d.ticker.items : [],
+/** Документ сервера → вид, в котором плейлист хранится на клиенте (и сравнивается с базой). */
+function normalize(d) {
+  return {
+    updatedAt: Number(d.updatedAt) || 0,
+    layout: d.layout === 'panel' ? 'panel' : 'full',
+    blank: { on: !!d.blank?.on, periods: Array.isArray(d.blank?.periods) ? d.blank.periods : [] },
+    urgent: { on: !!d.urgent?.on, id: String(d.urgent?.id || '') },
+    ticker: {
+      on: !!d.ticker?.on,
+      speed: d.ticker?.speed === 'slow' ? 'slow' : 'normal',
+      items: Array.isArray(d.ticker?.items) ? d.ticker.items : [],
+    },
+    items: Array.isArray(d.items) ? d.items : [],
   }
-  playlist.items = Array.isArray(d.items) ? d.items : []
+}
+
+function applyDoc(n) {
+  applying = true
+  playlist.updatedAt = n.updatedAt
+  playlist.layout = n.layout
+  playlist.blank = n.blank
+  playlist.urgent = n.urgent
+  playlist.ticker = n.ticker
+  playlist.items = n.items
   lastProbe = probeOf()
   playlistLoaded.value = true
   Promise.resolve().then(() => (applying = false))
+}
+
+const saver = makeSaver({
+  url: '/api/playlist',
+  status: saveStatus,
+  snapshot: () => JSON.parse(JSON.stringify(playlist)),
+  normalize,
+  applyDoc,
+  names: () => Object.fromEntries(playlist.items.map((it) => [it.id, slideTitle(it)])),
+})
+
+function apply(d) {
+  const n = normalize(d)
+  applyDoc(n)
+  saver.setBase(n)
 }
 
 async function loadPlaylist(onlyNewer) {
@@ -121,7 +149,8 @@ async function loadPlaylist(onlyNewer) {
     const r = await fetch('/api/playlist', { cache: 'no-store' })
     if (!r.ok) return
     const d = await r.json()
-    if (!onlyNewer || (Number(d.updatedAt) || 0) > playlist.updatedAt) apply(d)
+    if (!onlyNewer) apply(d)
+    else await saver.receive(d)
   } catch {
     /* нет связи — останемся с тем, что есть */
   }
@@ -139,21 +168,6 @@ export async function loadMedia() {
   }
 }
 
-async function push() {
-  try {
-    saveStatus.value = 'saving'
-    const r = await fetch('/api/playlist', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(playlist),
-    })
-    saveStatus.value = r.ok ? 'saved' : 'offline'
-  } catch {
-    saveStatus.value = 'offline'
-  }
-}
-
-let timer = null
 watch(
   playlist,
   () => {
@@ -164,8 +178,7 @@ watch(
     if (probe === lastProbe) return
     lastProbe = probe
     playlist.updatedAt = Date.now()
-    clearTimeout(timer)
-    timer = setTimeout(push, 300)
+    saver.schedule()
   },
   { deep: true },
 )
@@ -178,7 +191,7 @@ export function startPlaylist() {
   loadPlaylist(false)
   loadMedia()
   onServerEvent('playlist', (d) => {
-    if ((Number(d.updatedAt) || 0) > playlist.updatedAt) loadPlaylist(true)
+    if ((Number(d.updatedAt) || 0) > saver.baseUpdated()) loadPlaylist(true)
   })
   onServerEvent('media', loadMedia)
   // переподключились к серверу — могли пропустить изменения

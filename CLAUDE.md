@@ -106,6 +106,7 @@ src/
   store.js         расписание: reactive state, debounce 300 мс → PUT, SSE; onServerEvent(type, fn) → отписка;
                    getLessons/setLessonField, getChanges/setChangeField, changesActive(now) / hasChanges(now) (учитывают
                    changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay, isBreak(now) (kind 'break' у bellStatus); saveStatus, connected
+  merge.js         merge3(base, mine, theirs) → { merged, conflicts }, describeConflicts — без Vue; saver.js — сохранение с базой и 409 (syncNotice)
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
   decks.js         стор колод; makeDeck/makeCard, cardSeconds, avgCardSeconds, dayNumber, takeCard; startDecks()
@@ -213,6 +214,13 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - **Слабый ПК**: без тяжёлых `filter: blur` на больших слоях и бесконечных анимаций на многих элементах; анимировать
   только `transform` и `opacity`.
 - **Синхронизация**: правка → PUT → SSE (`data`/`playlist`/`decks` с updatedAt) → клиенты со старым updatedAt делают GET.
+  **Правки вдвоём**: `src/saver.js` (makeSaver, общий для store/playlist/decks) помнит базу — документ, который клиент
+  последним получил или отправил; PUT идёт с `X-Base-Updated: <updatedAt базы>`. Сервер (`server/conflict.js`:
+  `baseConflict`, `nextUpdated`; в api.js, playlist.js, decks.js) при более новом файле отвечает **409** `{ conflict, current }`
+  и ничего не пишет; без заголовка пишет как раньше; `updatedAt` на сервере всегда растёт (+1 к файлу). Клиент на 409 делает
+  `merge3(base, mine, theirs)` (src/merge.js) и повторяет (до 3 раз, потом ошибка в плашке); SSE/GET при несохранённых
+  правках тоже идут через merge3 (`saver.receive`). Своя правка побеждает, место → `conflicts` → плашка `syncNotice` в AdminApp.
+  Новое поле данных, которое хранится на клиенте иначе, чем на сервере, — учти в `normalize` стора.
   После обрыва EventSource переподключается сам и по `hello` догружает. Сменился `boot` → **экран** делает reload
   (так получает новую сборку). Восстанавливая данные «из прошлого», ставь свежий updatedAt — иначе клиенты не загрузят.
 - **Тесты с паролем**: на копии сервера задать пароль (`PUT /api/auth/password {current:"",next:"…"}` с cookie-jar), в
@@ -273,5 +281,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.9.0 — окно «Состояние системы» (`/api/status`, server/status.js; SystemStatus.vue): диск, копии, экраны, часы, пароль, точка в шапке.
 - v0.9.1 — экраны помнятся в `data/screens.json`, кнопка «Убрать из списка», жёлтая плашка «Экран не отвечает» в шапке редактора (только в учебное время), строка «Экраны» в «Состоянии» учитывает то же правило.
 - v0.9.2 — «Посмотреть» у снимка копии: окно RestorePreview.vue с разницей по разделам и частичным возвратом (`restore { files }`), src/dataDiff.js, чтение снимков только после входа.
+- v0.9.3 — правки вдвоём: заголовок `X-Base-Updated`, 409 с текущими данными, `merge3` на клиенте (src/merge.js, src/saver.js), плашка при совпавших местах; тесты tests/merge.test.js.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

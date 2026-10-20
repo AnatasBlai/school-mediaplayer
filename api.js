@@ -19,6 +19,7 @@ import { handleDecks } from './server/decks.js'
 import { handleBackup } from './server/backup.js'
 import { handleStatus } from './server/status.js'
 import { isAllowed, handleAuth } from './server/auth.js'
+import { baseConflict, nextUpdated } from './server/conflict.js'
 
 export { MIME } from './server/mime.js'
 
@@ -65,10 +66,22 @@ function handleData(req, res) {
     req.on('end', () => {
       try {
         const parsed = JSON.parse(body)
-        writeData(JSON.stringify(parsed, null, 2))
+        let cur = null
+        try {
+          cur = JSON.parse(readData())
+        } catch {
+          /* файла нет или он повреждён — конфликта быть не может */
+        }
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        res.end('{"ok":true}')
-        broadcast('data', { updatedAt: Number(parsed.updatedAt) || 0 })
+        if (cur && baseConflict(req, cur.updatedAt)) {
+          res.statusCode = 409
+          res.end(JSON.stringify({ ok: false, conflict: true, current: cur }))
+          return
+        }
+        parsed.updatedAt = nextUpdated(parsed.updatedAt, cur?.updatedAt)
+        writeData(JSON.stringify(parsed, null, 2))
+        res.end(JSON.stringify({ ok: true, updatedAt: parsed.updatedAt }))
+        broadcast('data', { updatedAt: parsed.updatedAt })
       } catch (e) {
         res.statusCode = 400
         res.end(JSON.stringify({ ok: false, error: String(e) }))

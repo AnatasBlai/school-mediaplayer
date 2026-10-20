@@ -3,6 +3,7 @@
 import { reactive, ref, watch } from 'vue'
 import { onServerEvent, saveStatus } from './store.js'
 import { newCardId } from './deckText.js'
+import { makeSaver } from './saver.js'
 
 export const decks = reactive({ updatedAt: 0, list: [] })
 export const decksLoaded = ref(false)
@@ -37,13 +38,30 @@ let applying = false
 let lastProbe = ''
 const probeOf = () => JSON.stringify(decks.list)
 
-function apply(d) {
+const normalize = (d) => ({ updatedAt: Number(d.updatedAt) || 0, decks: Array.isArray(d.decks) ? d.decks : [] })
+
+function applyDoc(n) {
   applying = true
-  decks.updatedAt = Number(d.updatedAt) || 0
-  decks.list = Array.isArray(d.decks) ? d.decks : []
+  decks.updatedAt = n.updatedAt
+  decks.list = n.decks
   lastProbe = probeOf()
   decksLoaded.value = true
   Promise.resolve().then(() => (applying = false))
+}
+
+const saver = makeSaver({
+  url: '/api/decks',
+  status: saveStatus,
+  snapshot: () => ({ updatedAt: decks.updatedAt, decks: JSON.parse(JSON.stringify(decks.list)) }),
+  normalize,
+  applyDoc,
+  names: () => Object.fromEntries(decks.list.map((d) => [d.id, d.name])),
+})
+
+function apply(d) {
+  const n = normalize(d)
+  applyDoc(n)
+  saver.setBase(n)
 }
 
 async function load(onlyNewer) {
@@ -51,27 +69,13 @@ async function load(onlyNewer) {
     const r = await fetch('/api/decks', { cache: 'no-store' })
     if (!r.ok) return
     const d = await r.json()
-    if (!onlyNewer || (Number(d.updatedAt) || 0) > decks.updatedAt) apply(d)
+    if (!onlyNewer) apply(d)
+    else await saver.receive(d)
   } catch {
     /* нет связи — останемся с тем, что есть */
   }
 }
 
-async function push() {
-  try {
-    saveStatus.value = 'saving'
-    const r = await fetch('/api/decks', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updatedAt: decks.updatedAt, decks: decks.list }),
-    })
-    saveStatus.value = r.ok ? 'saved' : 'offline'
-  } catch {
-    saveStatus.value = 'offline'
-  }
-}
-
-let timer = null
 watch(
   decks,
   () => {
@@ -80,8 +84,7 @@ watch(
     if (probe === lastProbe) return
     lastProbe = probe
     decks.updatedAt = Date.now()
-    clearTimeout(timer)
-    timer = setTimeout(push, 300)
+    saver.schedule()
   },
   { deep: true },
 )
@@ -93,7 +96,7 @@ export function startDecks() {
   started = true
   load(false)
   onServerEvent('decks', (d) => {
-    if ((Number(d.updatedAt) || 0) > decks.updatedAt) load(true)
+    if ((Number(d.updatedAt) || 0) > saver.baseUpdated()) load(true)
   })
   onServerEvent('hello', () => load(true))
 }
