@@ -59,7 +59,7 @@
 - Одноразовые скрипты и скриншоты — в scratchpad, не в проект. Скрипт вне проекта подключает playwright так:
   `createRequire('<путь проекта>/package.json')('playwright')`.
 - **Изолированная копия сервера** (обязательно для всего, что пишет данные): скопировать в scratchpad `api.js server.js
-  package.json server/ dist/ data/ src/deckText.js` и картинки из `media/` (без видео), запустить там
+  package.json server/ dist/ data/ src/deckText.js src/catalog.js` и картинки из `media/` (без видео), запустить там
   `PORT=8090 node server.js`. Так тест не трогает рабочие данные и не виден живым экранам школы.
   Или подменять ответы API в браузере: `page.route('**/api/playlist', r => r.fulfill({ json }))`.
   POST `/api/screens` в тестах тоже подменяй — иначе тестовый «экран» появится в «Сейчас на экране».
@@ -79,8 +79,8 @@
 - **Не запускать** на ПК разработки `kiosk.bat` (развернёт браузер на второй монитор) и `autostart-install.bat`
   (создаст задания планировщика). Проверять: `tools\kiosk.ps1 -DryRun`, `tools\autostart.ps1 -DryRun`, разбор
   `[System.Management.Automation.Language.Parser]::ParseFile`.
-- Списки допустимых тем и типов слайдов **продублированы на сервере** (`THEMES` в server/themes.js, `TYPES` в
-  server/playlist.js и server/decks.js). Добавил на клиенте — добавь и там.
+- Списки допустимых тем, типов слайдов, шаблонов, анимаций и параллелей — **в `src/catalog.js`** (его импортирует и сервер).
+  Добавил ключ — добавь в catalog.js и в `src/themes.js`/`NEWS_ANIMS`/`SLIDE_TITLES` (расхождение ловит `npm test`).
 - `ScheduleBoard` рисует фоны **всех** тем из `THEMES` стопкой. Не добавляй туда темы, не нужные табло, — слабый ПК.
 
 ## Архитектура
@@ -89,9 +89,8 @@
 server.js          раздаёт dist/ + API + /media/*; пути без расширения (/, /admin) → index.html; запускает расписание копий
 api.js             роутер API (общий для server.js и Vite-плагина) + GET/PUT /api/data → data/schedule.json (атомарно .tmp)
 server/
-  themes.js        список ключей тем THEMES (общий для playlist.js и decks.js; дублирует src/themes.js)
   events.js        SSE /api/events: hello { boot }; broadcast(data|media|playlist|decks|screens|backup); ping 25 с
-  playlist.js      GET/PUT /api/playlist; cleanItem/cleanWhen/cleanBlank/cleanLayout; TYPES, THEMES;
+  playlist.js      GET/PUT /api/playlist; cleanItem/cleanWhen/cleanBlank/cleanLayout;
                    removeMediaFromPlaylist(id) (фото/видео-слайд удаляется, у новости и победителей пропадает только фото)
   decks.js         GET/PUT /api/decks (нет файла → STARTER_DECKS из starterDecks.js), POST /api/decks/<id>/take → { n }
                    (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
@@ -111,6 +110,7 @@ src/
   scheduleImport.js разбор таблицы из Excel (parseScheduleTable, без Vue); окно — admin/ScheduleImport.vue (кнопка в шапке AdminApp)
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
+  catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
   rules.js         ruleState(when, now, isBreak) (when.breaks → isBreak из store.js), rulesText, hasRules, isBlanked(blank, now), DAY_SHORT — чистые функции
   themes.js        THEMES (5…11, changes — для табло) и EXTRA_THEMES (sea, sunset, mint, graphite, lavender, royal — только новости
@@ -262,5 +262,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.8.22 — автотесты `tests/*.test.js` (bells, rules, scheduleImport, winners, deckText, cleanItem/cleanDeck — экспортированы); `npm test`.
 
 - v0.8.23 — `npm run smoke` (tools/smoke.mjs): копия сервера во временной папке, обход экрана и редактора в Chromium, итоговая таблица, код выхода 0/1.
+
+- v0.8.24 — общие списки ключей в `src/catalog.js` (server/themes.js удалён), тест `tests/catalog.test.js`; catalog.js в pack.mjs и smoke.mjs.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

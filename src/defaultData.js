@@ -1,7 +1,7 @@
 // Начальные данные. День недели: 1 — понедельник … 6 — суббота.
 import { DEFAULT_BELLS } from './bells.js'
-
-export const GRADES = ['5', '6', '7', '8', '9', '10', '11']
+import { GRADES } from './catalog.js'
+export { GRADES }
 
 const L = (s, r = '') => ({ s, r })
 

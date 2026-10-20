@@ -8,7 +8,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
-import { THEMES } from './themes.js'
+import { THEME_KEYS as THEMES } from '../src/catalog.js'
 import { STARTER_DECKS } from './starterDecks.js'
 import { parseCards } from '../src/deckText.js'
 

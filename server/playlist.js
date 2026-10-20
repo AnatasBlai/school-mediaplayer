@@ -7,18 +7,14 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
-import { THEMES } from './themes.js'
+import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES } from '../src/catalog.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
 const SCHEDULE_FILE = path.join(ROOT, 'data', 'schedule.json')
 
-const NEWS_ANIMS = ['none', 'zoom', 'drift', 'parallax', 'rise'] // дублирует NEWS_ANIMS в src/playlist.js
-const TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'winners', 'countdown', 'deck']
 // шаблон фото/видео/новости/колоды: весь экран или содержимое слева + панель справа (часы, звонки, изменения)
-const LAYOUTS = ['full', 'panel']
 const cleanLayout = (v) => (LAYOUTS.includes(v) ? v : 'full')
-const GRADES = ['5', '6', '7', '8', '9', '10', '11']
 
 /** Правила показа: период дат, время суток, дни недели (1 — Пн … 7 — Вс), только на переменах. Пусто — показывать всегда. */
 function cleanWhen(w) {

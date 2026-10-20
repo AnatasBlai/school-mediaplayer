@@ -288,6 +288,7 @@ src/main.js                     выбирает страницу: /admin — р
 src/DisplayApp.vue              экран для зрителей
 src/display/Player.vue          показ по плейлисту (MediaSlide.vue — фото и видео, InfoPanel.vue — панель справа,
                                 NewsSlide.vue — новость, WinnersSlide.vue — победители, DeckSlide.vue + DeckCard.vue — карточки колод)
+src/catalog.js  общие списки допустимых тем, типов слайдов и т. п. (клиент и сервер)
 src/decks.js / src/deckText.js  колоды: загрузка и сохранение / формат «вставить списком»
 src/admin/DeckEditor.vue        раздел «Колоды»; NewsEditor.vue — окно новости, WinnersEditor.vue — победителей
 src/winners.js                  победители: разбор списка призёров, деление на экраны
