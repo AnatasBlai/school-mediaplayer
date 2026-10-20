@@ -359,6 +359,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <div class="summary">
               <span>{{ summaryOf(it) }}</span>
               <span class="when" :class="{ set: hasRules(it.when) }"> · когда: {{ hasRules(it.when) ? rulesText(it.when) : 'всегда' }}</span>
+              <span v-if="it.screens?.length" class="when set"> · только: {{ it.screens.join(', ') }}</span>
               <span v-if="snippetOf(it)" class="snip"> · {{ snippetOf(it) }}</span>
             </div>
           </div>

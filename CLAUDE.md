@@ -195,7 +195,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
     { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
       { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
   ] }
-// у image/video/news/winners/countdown/deck — layout? (свой шаблон); у любого слайда — when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
+// у image/video/news/winners/countdown/deck — layout? (свой шаблон); у любого слайда — screens? [≤10 имён экранов по ?name=, нет — все; cleanScreens; screenAllowed в rules.js; срочный режим игнорирует] и when? { dateFrom, dateTo, timeFrom, timeTo, days, breaks? /* true — только на переменах */ }
 ```
 id слайда `[a-z0-9]{4,32}` (иначе сервер выдаст новый). Дни в `when`/`blank`: 1 = Пн … 7 = Вс. Время [from, to),
 from > to — через полночь. Нет файла → плейлист по умолчанию (`updatedAt: 0`).
@@ -303,5 +303,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 - v0.9.5 — журнал правок (server/journal.js, JournalModal.vue): кто/когда/что, группировка правок < 2 мин, откат любой правки расписания/плейлиста/колод (откат сам пишется и откатывается), медиатека и служебное — без отката.
 - v0.9.6 — новая шапка редактора: «12 Кадр / медиаплеер», иконки разделов (3 вида), меню ⚙ вместо кнопок журнал/состояние/пользователи/пароль/выход, «Открыть экран» — клик по «Сейчас на экране», статус «Сохранено».
+
+Сделано в этапе 10:
+- v0.10.0 — слайд только на выбранных экранах (`screens`): блок «Где показывать» в SlideSettings, метка «только: …» в очереди, «слайдов для этого экрана: N из M» в NowOnScreen, `playable()` проверяет имя экрана.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

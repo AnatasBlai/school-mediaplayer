@@ -78,6 +78,21 @@ function cleanGroup(g) {
   return { name: str(g?.name, 40), places, others: String(g?.others ?? '').slice(0, 3000) }
 }
 
+/** Имена экранов слайда: до 10 строк по 40 символов, без пустых и повторов (без учёта регистра). */
+export function cleanScreens(a) {
+  const out = []
+  const seen = new Set()
+  for (const v of Array.isArray(a) ? a : []) {
+    const s = String(v ?? '').trim().slice(0, 40).trim()
+    const k = s.toLowerCase()
+    if (!s || seen.has(k)) continue
+    seen.add(k)
+    out.push(s)
+    if (out.length >= 10) break
+  }
+  return out
+}
+
 /** Приводит слайд к допустимому виду; null — выбросить. */
 export function cleanItem(x) {
   if (!x || !TYPES.includes(x.type)) return null
@@ -139,6 +154,9 @@ export function cleanItem(x) {
   if (x.type !== 'schedule' && x.type !== 'changes' && LAYOUTS.includes(x.layout)) it.layout = x.layout
   const when = cleanWhen(x.when)
   if (when) it.when = when
+  // экраны, на которых показывать (по ?name=); нет поля — на всех
+  const scr = cleanScreens(x.screens)
+  if (scr.length) it.screens = scr
   return it
 }
 

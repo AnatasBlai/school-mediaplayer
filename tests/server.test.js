@@ -58,3 +58,10 @@ test('baseConflict: новее базы — конфликт; нет загол�
   assert.equal(nextUpdated(150, 200), 201) // часы клиента отстают — версия всё равно растёт
   assert.equal(nextUpdated(300, 200), 300)
 })
+
+test('cleanItem: screens — обрезка, без пустых и повторов, не больше 10', () => {
+  const base = { type: 'schedule', id: 'abcd1' }
+  assert.equal('screens' in cleanItem({ ...base, screens: [] }), false)
+  assert.deepEqual(cleanItem({ ...base, screens: [' Hall ', 'hall', '', 5, 'x'.repeat(50)] }).screens, ['Hall', '5', 'x'.repeat(40)])
+  assert.equal(cleanItem({ ...base, screens: Array.from({ length: 15 }, (_, i) => 'e' + i) }).screens.length, 10)
+})

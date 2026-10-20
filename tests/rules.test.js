@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ruleState, isBlanked, rulesText, tickerTexts, countdownState, hasRules } from '../src/rules.js'
+import { ruleState, isBlanked, rulesText, tickerTexts, countdownState, hasRules, screenAllowed } from '../src/rules.js'
 
 const d = (y, mo, day, h = 12, mi = 0) => new Date(y, mo - 1, day, h, mi) // месяц с 1
 
@@ -109,4 +109,12 @@ test('countdownState: со временем — до минуты', () => {
   assert.equal(countdownState(it, d(2026, 10, 20, 15, 30)).over, true)
   assert.equal(countdownState({ date: '', time: '' }, d(2026, 10, 20)).over, true)
   assert.equal(countdownState({ date: '2026-10-25', time: '' }, d(2026, 10, 20, 9)).days, 5)
+})
+
+test('screenAllowed: нет списка — всем; имя без регистра и пробелов; без имени — только «всем»', () => {
+  assert.equal(screenAllowed(undefined, ''), true)
+  assert.equal(screenAllowed([], 'Hall'), true)
+  assert.equal(screenAllowed(['Hall'], ' hall '), true)
+  assert.equal(screenAllowed(['Hall'], 'Canteen'), false)
+  assert.equal(screenAllowed(['Hall'], ''), false)
 })

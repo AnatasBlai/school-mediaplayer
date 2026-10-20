@@ -94,3 +94,13 @@ export function countdownState(it, now = new Date()) {
   const left = Math.max(0, Math.ceil((target - now) / 60000))
   return { over: false, days, today: days <= 0, hours: Math.floor(left / 60), mins: left % 60 }
 }
+
+// ---------- экраны слайда ----------
+const normName = (s) => String(s ?? '').trim().toLowerCase()
+
+/** Идёт ли слайд на экране с таким именем (?name=). Нет списка — на всех; экран без имени — только «на всех». */
+export function screenAllowed(screens, name) {
+  if (!screens?.length) return true
+  const n = normName(name)
+  return !!n && screens.some((s) => normName(s) === n)
+}

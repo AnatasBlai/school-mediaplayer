@@ -1,6 +1,7 @@
 <script setup>
 // «Сейчас на экране»: карточка на каждый экран, который сообщал о себе серверу.
 import { computed } from 'vue'
+import { screenAllowed } from '../rules.js'
 import { playlist, mediaById, slideTitle, thumbUrl } from '../playlist.js'
 import { screens, startScreens, serverNow, isOnline, visibleScreens, screenLabel as label, removeScreen } from './screens.js'
 
@@ -22,6 +23,12 @@ function fmtAgo(ms) {
   if (s < 60) return s + ' с'
   if (s < 3600) return Math.floor(s / 60) + ' мин ' + (s % 60) + ' с'
   return Math.floor(s / 3600) + ' ч ' + Math.floor((s % 3600) / 60) + ' мин'
+}
+
+// сколько включённых слайдов плейлиста подходит этому экрану (по имени)
+function forScreen(s) {
+  const on = playlist.items.filter((x) => x.on)
+  return { n: on.filter((x) => screenAllowed(x.screens, s.name)).length, m: on.length }
 }
 
 function view(s) {
@@ -76,6 +83,7 @@ function view(s) {
           </div>
         </template>
         <div v-else class="sub bad">Нет связи {{ fmtAgo(serverNow() - lastSeen(s)) }}</div>
+        <div class="sub">слайдов для этого экрана: {{ forScreen(s).n }} из {{ forScreen(s).m }}</div>
         <button v-if="!s.online" class="rm" @click="remove(s)">Убрать из списка</button>
       </div>
     </div>

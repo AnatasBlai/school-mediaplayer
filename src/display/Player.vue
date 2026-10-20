@@ -18,7 +18,7 @@ import NewsSlide from './NewsSlide.vue'
 import WinnersSlide from './WinnersSlide.vue'
 import CountdownSlide from './CountdownSlide.vue'
 import DeckSlide from './DeckSlide.vue'
-import { ruleState, isBlanked, countdownState } from '../rules.js'
+import { ruleState, isBlanked, countdownState, screenAllowed } from '../rules.js'
 import Ticker from './Ticker.vue'
 import { decksLoaded, deckById, startDecks } from '../decks.js'
 
@@ -34,11 +34,14 @@ function boardTabs(it) {
   return gs.filter((g) => (state.settings.letters[g] || []).length)
 }
 
+// имя экрана из адреса (/?name=Холл): слайд с списком screens идёт только на этих экранах
+const screenName = new URLSearchParams(location.search).get('name') || ''
+
 // время для правил показа; обновляем раз в 10 с — этого хватает, слайды всё равно длиннее
 const now = ref(new Date())
 
 function playable(it) {
-  if (!it.on || !ruleState(it.when, now.value, isBreak).ok) return false
+  if (!it.on || !ruleState(it.when, now.value, isBreak).ok || !screenAllowed(it.screens, screenName)) return false
   if (it.type === 'schedule') return boardTabs(it).length > 0
   if (it.type === 'changes') return !it.skipEmpty || hasChanges(now.value)
   if (it.type === 'news') return !!(it.title || it.text)
@@ -142,7 +145,6 @@ const screenId = (() => {
     return make()
   }
 })()
-const screenName = new URLSearchParams(location.search).get('name') || ''
 const boardTab = ref('') // какую вкладку сейчас показывает табло
 
 function report() {

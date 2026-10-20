@@ -1,6 +1,7 @@
 <script setup>
 // Окно настроек одного слайда плейлиста (кнопка ⚙ в строке): время показа, вид, шаблон, «Когда». Правки сохраняются сами.
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { visibleScreens } from './screens.js'
 import { GRADES, isBreak } from '../store.js'
 import { playlist, mediaById, slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout } from '../playlist.js'
 import { decks, deckById, avgCardSeconds } from '../decks.js'
@@ -59,6 +60,43 @@ function clearWhen() {
   delete it.value.when
 }
 const rule = computed(() => ruleState(it.value.when, props.now, isBreak))
+
+// ---------- где показывать ----------
+// список имён: экраны из «Сейчас на экране» (и без связи) + имена из других слайдов + выбранные здесь
+const chosen = computed(() => it.value.screens || [])
+const onlySome = computed(() => chosen.value.length > 0 || pickMode.value)
+const pickMode = ref(false) // «Только на выбранных» включено, но имя ещё не выбрано
+const newName = ref('')
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase()
+const knownNames = computed(() => {
+  const out = []
+  const add = (n) => {
+    n = String(n || '').trim()
+    if (n && !out.some((x) => sameName(x, n))) out.push(n)
+  }
+  visibleScreens.value.forEach((s) => add(s.name))
+  playlist.items.forEach((x) => (x.screens || []).forEach(add))
+  chosen.value.forEach(add)
+  return out
+})
+const screenOn = (n) => chosen.value.some((x) => sameName(x, n))
+function toggleScreen(n) {
+  const cur = [...chosen.value]
+  const i = cur.findIndex((x) => sameName(x, n))
+  if (i >= 0) cur.splice(i, 1)
+  else if (cur.length < 10) cur.push(n)
+  if (cur.length) it.value.screens = cur
+  else delete it.value.screens
+}
+function addName() {
+  const n = newName.value.trim().slice(0, 40)
+  newName.value = ''
+  if (n && !screenOn(n)) toggleScreen(n)
+}
+function setAllScreens() {
+  pickMode.value = false
+  delete it.value.screens
+}
 
 const onKey = (e) => e.key === 'Escape' && emit('close')
 onMounted(() => window.addEventListener('keydown', onKey))
@@ -154,6 +192,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
               <button :class="{ on: !it.layout }" @click="setLayout('')">Как у всех ({{ LAYOUT_TITLES[playlist.layout].toLowerCase() }})</button>
               <button v-for="(t, k) in LAYOUT_TITLES" :key="k" :class="{ on: it.layout === k }" @click="setLayout(k)">{{ t }}</button>
             </span>
+          </div>
+        </div>
+
+        <div class="sec">
+          <span class="a-label">Где показывать</span>
+          <div class="val">
+            <span class="a-seg">
+              <button :class="{ on: !onlySome }" @click="setAllScreens">На всех экранах</button>
+              <button :class="{ on: onlySome }" @click="pickMode = true">Только на выбранных</button>
+            </span>
+          </div>
+          <div v-if="onlySome" class="val scr-pick">
+            <span v-if="knownNames.length" class="a-chips">
+              <button v-for="n in knownNames" :key="n" :class="{ on: screenOn(n) }" @click="toggleScreen(n)">{{ n }}</button>
+            </span>
+            <span class="add">
+              <input v-model="newName" class="a-input" maxlength="40" placeholder="Имя экрана" @keydown.enter="addName" />
+              <button class="a-btn" :disabled="!newName.trim()" @click="addName">Добавить</button>
+            </span>
+            <span class="a-hint">имя — из адреса экрана (?name=…); экран без имени показывает только слайды «на всех экранах»</span>
           </div>
         </div>
 
@@ -296,6 +354,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .sound {
   margin-left: auto;
+}
+.scr-pick {
+  margin-top: 8px;
+}
+.add {
+  display: flex;
+  gap: 6px;
+}
+.add .a-input {
+  padding: 5px 8px;
+  width: 160px;
 }
 .rules {
   display: flex;
