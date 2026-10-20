@@ -11,7 +11,7 @@ import { makeSaver } from './saver.js'
 // ticker — бегущая строка: { on, speed: 'slow'|'normal', items: [{ text, until: 'ГГГГ-ММ-ДД'|'' }] }
 // blank — гашение экрана по расписанию: { on, periods: [{ timeFrom, timeTo, days }] } (src/rules.js → isBlanked)
 // urgent — срочный режим: { on, id } — экраны показывают только слайд с этим id (Player.vue)
-export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, urgent: { on: false, id: '' }, ticker: { on: false, speed: 'normal', items: [] }, items: [] })
+export const playlist = reactive({ updatedAt: 0, layout: 'full', blank: { on: false, periods: [] }, urgent: { on: false, id: '' }, ticker: { on: false, speed: 'normal', items: [] }, templates: [], items: [] })
 export const playlistLoaded = ref(false)
 export const mediaLoaded = ref(false)
 export const media = ref([]) // элементы медиатеки (data/media.json)
@@ -46,6 +46,39 @@ export const NEWS_ANIMS = {
 /** Глубокая копия слайда с новым id; копия всегда включена. */
 export function cloneSlide(it) {
   return { ...JSON.parse(JSON.stringify(it)), id: newId(), on: true }
+}
+
+// ---------- шаблоны слайдов ----------
+// Встроенные — в коде (слайд без id и on); свои хранятся в playlist.templates: [{ id, name, slide }].
+export const BUILTIN_TEMPLATES = [
+  { id: 'congrats', name: 'Поздравляем!', slide: { type: 'news', label: 'ПОЗДРАВЛЯЕМ', title: 'Имя Фамилия', text: '', theme: 'sunset', anim: 'zoom' } },
+  { id: 'parents', name: 'Родительское собрание', slide: { type: 'news', label: 'ВНИМАНИЕ', title: 'Родительское собрание', text: 'Дата, время, кабинет …' } },
+  { id: 'duty', name: 'Дежурный класс недели', slide: { type: 'news', label: 'ДЕЖУРСТВО', title: 'Дежурит 8А', when: { dateFrom: '', dateTo: '', timeFrom: '', timeTo: '', days: [1, 2, 3, 4, 5, 6] } } },
+  { id: 'contest', name: 'Олимпиада / конкурс', slide: { type: 'news', label: 'КОНКУРС', title: 'Название конкурса', text: '' } },
+  { id: 'holidays', name: 'До каникул', slide: { type: 'countdown', title: 'каникул' } },
+  { id: 'olympiad', name: 'Победители олимпиады', slide: { type: 'winners', title: 'Олимпиада' } },
+]
+
+/** Новый слайд по шаблону: основа — makeSlide нужного типа, поверх поля шаблона; id новый, слайд включён. */
+export function slideFromTemplate(t) {
+  const base = makeSlide(t.slide.type, t.slide.media || t.slide.deck)
+  return { ...base, ...JSON.parse(JSON.stringify(t.slide)), id: newId(), on: true }
+}
+
+/** Шаблон из слайда: без id, on и срочного режима; «Когда» остаётся. */
+export function templateFromSlide(it, name) {
+  const slide = JSON.parse(JSON.stringify(it))
+  delete slide.id
+  delete slide.on
+  return { id: newId(), name: String(name).trim().slice(0, 40), slide }
+}
+
+/** Кнопка «Сохранить как шаблон» в окнах правки: спрашивает имя и добавляет шаблон в playlist.templates. */
+export function saveAsTemplate(it) {
+  if (it.type === 'countdown' && !it.date) return alert('Сначала укажите дату события — без неё шаблон не сохранится.')
+  if (playlist.templates.length >= 50) return alert('Шаблонов уже 50 — удалите ненужные в меню «Из шаблона».')
+  const name = prompt('Название шаблона:', (it.title || '').slice(0, 40))
+  if (name && name.trim()) playlist.templates.push(templateFromSlide(it, name))
 }
 
 /** Новый слайд. Для 'image'/'video' второй аргумент — id файла, для 'deck' — id колоды. */
@@ -98,7 +131,7 @@ export const usesOfMedia = (id) => playlist.items.filter((it) => it.media === id
 
 let applying = false
 let lastProbe = ''
-const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.urgent, playlist.ticker, playlist.items])
+const probeOf = () => JSON.stringify([playlist.layout, playlist.blank, playlist.urgent, playlist.ticker, playlist.templates, playlist.items])
 
 /** Документ сервера → вид, в котором плейлист хранится на клиенте (и сравнивается с базой). */
 function normalize(d) {
@@ -112,6 +145,7 @@ function normalize(d) {
       speed: d.ticker?.speed === 'slow' ? 'slow' : 'normal',
       items: Array.isArray(d.ticker?.items) ? d.ticker.items : [],
     },
+    templates: Array.isArray(d.templates) ? d.templates : [],
     items: Array.isArray(d.items) ? d.items : [],
   }
 }
@@ -123,6 +157,7 @@ function applyDoc(n) {
   playlist.blank = n.blank
   playlist.urgent = n.urgent
   playlist.ticker = n.ticker
+  playlist.templates = n.templates
   playlist.items = n.items
   lastProbe = probeOf()
   playlistLoaded.value = true

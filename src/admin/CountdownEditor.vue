@@ -1,7 +1,7 @@
 <script setup>
 // Окно правки обратного отсчёта: форма слева, живое превью справа. Правки сразу пишутся в слайд плейлиста.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { layoutOf } from '../playlist.js'
+import { layoutOf, saveAsTemplate } from '../playlist.js'
 import { countdownState } from '../rules.js'
 import CountdownSlide from '../display/CountdownSlide.vue'
 import ThemeSwatches from './ThemeSwatches.vue'
@@ -29,6 +29,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="head">
         <h2>Обратный отсчёт</h2>
         <span class="a-hint">Сохраняется сам и сразу виден на экранах</span>
+        <button class="a-btn" title="Запомнить этот слайд как заготовку" @click="saveAsTemplate(item)">Сохранить как шаблон</button>
         <button class="a-btn primary" @click="emit('close')">Готово</button>
       </div>
 

@@ -3,7 +3,7 @@
 // Группы-классы — вкладками; у группы 1–3 места (ФИО и класс, до 3 человек на место) и призёры текстом.
 // Правки сразу пишутся в слайд плейлиста (и уходят на экраны, как любая правка плейлиста).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { mediaById, thumbUrl, layoutOf, NEWS_ANIMS, winnerScreensOf } from '../playlist.js'
+import { mediaById, thumbUrl, layoutOf, NEWS_ANIMS, winnerScreensOf, saveAsTemplate } from '../playlist.js'
 import { makeGroup, parseOthers, podiumOf, UNDER_PODIUM, PER_PLACE } from '../winners.js'
 import { plural } from '../bells.js'
 import WinnersSlide from '../display/WinnersSlide.vue'
@@ -83,6 +83,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="head">
         <h2>Победители</h2>
         <span class="a-hint">Сохраняется сама и сразу видна на экранах</span>
+        <button class="a-btn" title="Запомнить этот слайд как заготовку" @click="saveAsTemplate(item)">Сохранить как шаблон</button>
         <button class="a-btn primary" @click="emit('close')">Готово</button>
       </div>
 

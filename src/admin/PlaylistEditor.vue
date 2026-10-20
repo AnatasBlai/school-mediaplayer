@@ -10,6 +10,7 @@ import {
   mediaById,
   makeSlide,
   cloneSlide,
+  slideFromTemplate,
   startPlaylist,
   slideTitle,
   SLIDE_TITLES,
@@ -182,6 +183,25 @@ function onAdd(type, deck) {
   else playlist.items.push(makeSlide(type))
 }
 
+// слайд по шаблону — в конец очереди, окно правки открывается сразу (как у копии)
+function onTemplate(t) {
+  const it = slideFromTemplate(t)
+  playlist.items.push(it)
+  const added = playlist.items[playlist.items.length - 1]
+  if (it.type === 'news') newsEdit.value = added
+  if (it.type === 'winners') winEdit.value = added
+  if (it.type === 'countdown') cdEdit.value = added
+}
+function renameTemplate(t) {
+  const name = prompt('Новое название шаблона:', t.name)
+  if (name && name.trim()) t.name = name.trim().slice(0, 40)
+}
+function removeTemplate(t) {
+  if (!confirm(`Удалить шаблон «${t.name}»? Слайды, созданные по нему, останутся.`)) return
+  const i = playlist.templates.indexOf(t)
+  if (i >= 0) playlist.templates.splice(i, 1)
+}
+
 // новость правится в отдельном окне; пустую новость при закрытии убираем
 const newsEdit = ref(null)
 function addNews() {
@@ -266,7 +286,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <section class="pl">
     <!-- слева: инструменты -->
     <aside class="side">
-      <AddSlideMenu @add="onAdd" />
+      <AddSlideMenu @add="onAdd" @template="onTemplate" @rename-template="renameTemplate" @remove-template="removeTemplate" />
 
       <div class="card">
         <div class="card-head">

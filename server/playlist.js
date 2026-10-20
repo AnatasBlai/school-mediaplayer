@@ -1,5 +1,5 @@
 // Плейлист экрана: порядок слайдов, длительность, вкл/выкл — data/playlist.json.
-//   GET /api/playlist  → { version, updatedAt, layout, blank, ticker, urgent, items }; если файла нет — плейлист по умолчанию
+//   GET /api/playlist  → { version, updatedAt, layout, blank, ticker, urgent, templates, items }; если файла нет — плейлист по умолчанию
 //                        из старых настроек автолистания (schedule.json), на диск он попадает при первом PUT
 //   PUT /api/playlist  — весь плейлист целиком (как /api/data), сервер проверяет и чистит поля
 import fs from 'node:fs'
@@ -160,6 +160,24 @@ export function cleanItem(x) {
   return it
 }
 
+/** Свои шаблоны слайдов: [{ id, name ≤40, slide }] до 50; slide проверяется как обычный слайд (id и on в шаблон не входят). */
+export function cleanTemplates(list) {
+  const out = []
+  const ids = new Set()
+  for (const t of Array.isArray(list) ? list : []) {
+    const slide = cleanItem({ ...t?.slide, id: undefined })
+    const name = str(t?.name, 40)
+    if (!slide || !name) continue
+    delete slide.id
+    delete slide.on
+    const id = /^[a-z0-9]{4,32}$/.test(t.id) && !ids.has(t.id) ? t.id : newId()
+    ids.add(id)
+    out.push({ id, name, slide })
+    if (out.length >= 50) break
+  }
+  return out
+}
+
 /** Плейлист по умолчанию повторяет прежнее автолистание: параллели 5–11, затем «Изменения». */
 function defaultPlaylist() {
   let s = {}
@@ -175,6 +193,7 @@ function defaultPlaylist() {
     blank: cleanBlank(null),
     ticker: cleanTicker(null),
     urgent: cleanUrgent(null, []),
+    templates: [],
     items: [
       cleanItem({ id: 'schedule0', type: 'schedule', duration: s.interval }),
       cleanItem({
@@ -199,6 +218,7 @@ export function readPlaylist() {
       blank: cleanBlank(d.blank),
       ticker: cleanTicker(d.ticker),
       urgent: cleanUrgent(d.urgent, items),
+      templates: cleanTemplates(d.templates),
       items,
     }
   } catch {
@@ -227,8 +247,15 @@ export function removeMediaFromPlaylist(mediaId, req, fileName = '') {
     return true
   })
   const removed = p.items.length - items.length
+  // в шаблонах фото просто пропадает, сам шаблон остаётся
+  const templates = p.templates.map((t) => {
+    if (t.slide.media !== mediaId) return t
+    touched = true
+    const { media, ...slide } = t.slide
+    return { ...t, slide }
+  })
   if (touched) {
-    const after = { ...p, updatedAt: Date.now(), urgent: cleanUrgent(p.urgent, items), items }
+    const after = { ...p, updatedAt: Date.now(), urgent: cleanUrgent(p.urgent, items), templates, items }
     writePlaylist(after)
     logChange(req, 'playlist', before, after, { single: true, note: `Из-за удаления файла «${fileName}»` })
   }
@@ -270,6 +297,7 @@ export function handlePlaylist(req, res) {
       blank: cleanBlank(d.blank),
       ticker: cleanTicker(d.ticker),
       urgent: cleanUrgent(d.urgent, items),
+      templates: cleanTemplates(d.templates),
       items,
     }
     writePlaylist(p)

@@ -150,7 +150,7 @@ src/
                    вид кнопок разделов text|icons|both (localStorage `tablo-nav-view`, по умолчанию both), имя, HeaderMenu.vue — меню ⚙
                    (вид разделов, журнал, состояние, пользователи, пароль, выход / создать администратора; точка состояния на ⚙).
                    icons.js — SVG-иконки наборами по стилю (`ICON_SETS`, `icon(name)`), задел под смену оформления редактора
-    PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд»), сводка «Настройки экрана»
+    PlaylistEditor.vue  две колонки 30/70: слева AddSlideMenu.vue (меню «＋ Добавить слайд», в т.ч. «Из шаблона»: встроенные и свои, ✎ ✕; «Сохранить как шаблон» — в NewsEditor/WinnersEditor/CountdownEditor), сводка «Настройки экрана»
                    (→ ScreenSettings.vue: окно-вкладки шаблон / гашение / бегущая строка), NowOnScreen; справа итог и
                    компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
@@ -183,6 +183,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
 **playlist.json** — PUT целиком из редактора; при удалении файла правит сервер:
 ```js
 { version: 1, updatedAt, layout: 'full'|'panel', urgent: { on, id } /* срочный режим: id слайда из items, нет такого — off; cleanUrgent */, blank: { on, periods: [{ timeFrom, timeTo, days }] },
+  templates: [{ id, name ≤40, slide /* слайд без id и on */ }] /* свои шаблоны слайдов, ≤50; cleanTemplates; встроенные — BUILTIN_TEMPLATES в src/playlist.js */,
   ticker: { on, speed: 'slow'|'normal', items: [{ text ≤200, until: 'ГГГГ-ММ-ДД'|'' }] },   // ≤10; cleanTicker; rules.js → tickerTexts
   items: [                                   // порядок = порядок показа
     { id, type: 'schedule', on, duration /* с на параллель */, grades: [] /* [] — все */ },
@@ -306,5 +307,7 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 Сделано в этапе 10:
 - v0.10.0 — слайд только на выбранных экранах (`screens`): блок «Где показывать» в SlideSettings, метка «только: …» в очереди, «слайдов для этого экрана: N из M» в NowOnScreen, `playable()` проверяет имя экрана.
+
+- v0.10.1 — шаблоны слайдов: меню «Из шаблона» (6 встроенных + свои), `playlist.templates`, `cleanTemplates`, при удалении фото из медиатеки шаблон остаётся без фото.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

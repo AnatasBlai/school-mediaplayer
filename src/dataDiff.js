@@ -122,6 +122,7 @@ export function diffPlaylist(a, b, dict = {}) {
   if (!same(a?.blank, b?.blank)) settings.push('гашение экрана')
   if (!same(a?.ticker, b?.ticker)) settings.push('бегущая строка')
   if (!same(a?.urgent, b?.urgent)) settings.push('срочный режим')
+  if (!same(a?.templates || [], b?.templates || [])) settings.push('шаблоны слайдов')
   if (settings.length) out.push('Настройки экрана: ' + settings.join(', '))
   return limitLines(out)
 }

@@ -123,6 +123,7 @@ export function describePath(path, names = {}) {
   if (root === 'ticker') return 'бегущая строка'
   if (root === 'blank') return 'гашение экрана'
   if (root === 'urgent') return 'срочный режим'
+  if (root === 'templates') return 'шаблоны слайдов'
   if (root === 'layout') return 'шаблон экрана'
   return 'общие настройки'
 }

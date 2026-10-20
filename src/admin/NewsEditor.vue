@@ -2,7 +2,7 @@
 // Окно правки новости: форма слева, живое превью справа. Правки сразу пишутся в слайд плейлиста
 // (и уходят на экраны, как любая правка плейлиста).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { mediaById, thumbUrl, layoutOf, NEWS_ANIMS } from '../playlist.js'
+import { mediaById, thumbUrl, layoutOf, NEWS_ANIMS, saveAsTemplate } from '../playlist.js'
 import NewsSlide from '../display/NewsSlide.vue'
 import MediaPicker from './MediaPicker.vue'
 import ThemeSwatches from './ThemeSwatches.vue'
@@ -42,6 +42,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="head">
         <h2>Новость</h2>
         <span class="a-hint">Сохраняется сама и сразу видна на экранах</span>
+        <button class="a-btn" title="Запомнить этот слайд как заготовку" @click="saveAsTemplate(item)">Сохранить как шаблон</button>
         <button class="a-btn primary" @click="emit('close')">Готово</button>
       </div>
 

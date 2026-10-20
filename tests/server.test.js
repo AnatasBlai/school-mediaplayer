@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanItem } from '../server/playlist.js'
+import { cleanItem, cleanTemplates } from '../server/playlist.js'
 import { cleanDeck } from '../server/decks.js'
 
 test('cleanItem: неизвестный тип и пустое → null', () => {
@@ -64,4 +64,21 @@ test('cleanItem: screens — обрезка, без пустых и повтор
   assert.equal('screens' in cleanItem({ ...base, screens: [] }), false)
   assert.deepEqual(cleanItem({ ...base, screens: [' Hall ', 'hall', '', 5, 'x'.repeat(50)] }).screens, ['Hall', '5', 'x'.repeat(40)])
   assert.equal(cleanItem({ ...base, screens: Array.from({ length: 15 }, (_, i) => 'e' + i) }).screens.length, 10)
+})
+
+test('cleanTemplates: имя ≤40, слайд чистится, id и on не входят, битое выбрасывается', () => {
+  const out = cleanTemplates([
+    { id: 'abcd1', name: ' Поздравляем '.repeat(5), slide: { type: 'news', id: 'zzzz9', on: false, title: 'Имя', theme: 'нет' } },
+    { name: 'Без даты', slide: { type: 'countdown', title: 'x' } },
+    { name: '', slide: { type: 'news' } },
+    { name: 'Мусор', slide: { type: 'bogus' } },
+  ])
+  assert.equal(out.length, 1)
+  assert.equal(out[0].id, 'abcd1')
+  assert.ok(out[0].name.length <= 40)
+  assert.equal(out[0].slide.id, undefined)
+  assert.equal(out[0].slide.on, undefined)
+  assert.equal(out[0].slide.theme, '6')
+  assert.equal(cleanTemplates(null).length, 0)
+  assert.equal(cleanTemplates(Array.from({ length: 60 }, (_, i) => ({ name: 'n' + i, slide: { type: 'news' } }))).length, 50)
 })

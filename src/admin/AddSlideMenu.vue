@@ -2,8 +2,10 @@
 // Кнопка «＋ Добавить слайд» с выезжающим меню типов. Само добавление делает PlaylistEditor (событие add).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { decks } from '../decks.js'
+import { playlist, BUILTIN_TEMPLATES } from '../playlist.js'
+import { can } from './auth.js'
 
-const emit = defineEmits(['add']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | deck
+const emit = defineEmits(['add', 'template', 'rename-template', 'remove-template']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | deck; template(шаблон)
 
 const KINDS = [
   { type: 'media', icon: '▣', title: 'Фото или видео', note: 'Файлы из медиатеки' },
@@ -16,12 +18,20 @@ const KINDS = [
 
 const open = ref(false)
 const deckOpen = ref(false) // раскрыт ли список колод внутри меню
+const tplOpen = ref(false) // раскрыт ли список шаблонов
 const root = ref(null)
 
 function toggle() {
   open.value = !open.value
   deckOpen.value = false
+  tplOpen.value = false
 }
+function pickTemplate(t) {
+  open.value = false
+  emit('template', t)
+}
+// цвет миниатюры шаблона — по теме его слайда
+const tplType = (t) => t.slide.type
 function pick(type, deck) {
   open.value = false
   emit('add', type, deck)
@@ -68,6 +78,28 @@ onBeforeUnmount(() => {
           {{ d.name }} <span>{{ d.cards.length }}</span>
         </button>
         <a v-if="!decks.list.length" class="a-link" href="#decks">Колод пока нет — создать →</a>
+      </div>
+      <button class="item" :class="{ on: tplOpen }" @click="tplOpen = !tplOpen">
+        <span class="ico tpl">❖</span>
+        <span class="txt">
+          <b>Из шаблона</b>
+          <small>Готовые заготовки и ваши шаблоны</small>
+        </span>
+        <span class="more">{{ tplOpen ? '▴' : '▾' }}</span>
+      </button>
+      <div v-if="tplOpen" class="decks">
+        <div v-for="t in BUILTIN_TEMPLATES" :key="t.id" class="tpl-row">
+          <button class="deck-item" :title="t.name" @click="pickTemplate(t)">
+            <span class="dot" :class="tplType(t)"></span><b>{{ t.name }}</b>
+          </button>
+        </div>
+        <div v-for="t in playlist.templates" :key="t.id" class="tpl-row">
+          <button class="deck-item" :title="t.name" @click="pickTemplate(t)">
+            <span class="dot" :class="tplType(t)"></span><b>{{ t.name }}</b>
+          </button>
+          <button v-if="can('playlist')" class="mini" title="Переименовать" @click="emit('rename-template', t)">✎</button>
+          <button v-if="can('playlist')" class="mini" title="Удалить" @click="emit('remove-template', t)">✕</button>
+        </div>
       </div>
     </div>
   </div>
@@ -173,6 +205,10 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);
   font-size: 15px;
 }
+.ico.tpl {
+  background: linear-gradient(135deg, #2f9a8a, #0c3a4a);
+  font-size: 16px;
+}
 .ico.deck {
   background: linear-gradient(135deg, #7a2fd0, #12052e);
   font-size: 15px;
@@ -221,6 +257,51 @@ onBeforeUnmount(() => {
 }
 .deck-item span {
   color: #8b909a;
+}
+.tpl-row {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+.tpl-row .deck-item {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  align-items: center;
+}
+.tpl-row .deck-item b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.dot {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: #2c74c0;
+}
+.dot.countdown {
+  background: #e0752a;
+}
+.dot.winners {
+  background: #e0b030;
+}
+.mini {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 7px;
+  padding: 0 9px;
+  background: #22252b;
+  color: #aeb3bd;
+  font: inherit;
+  cursor: pointer;
+}
+.mini:hover {
+  background: #3b404a;
+  color: #fff;
 }
 .decks .a-link {
   padding: 6px 10px;
