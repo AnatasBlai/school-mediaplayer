@@ -590,6 +590,8 @@ input:focus {
   overflow: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  /* ряды по высоте карточки: иначе при многих файлах ряды сжимаются под высоту сетки */
+  grid-auto-rows: max-content;
   align-content: start;
   gap: 14px;
   padding-right: 4px;
@@ -597,7 +599,8 @@ input:focus {
 .card {
   border-radius: 12px;
   background: #26292f;
-  overflow: hidden;
+  /* clip, а не hidden: с hidden карточку в сетке можно сжать до нуля */
+  overflow: clip;
 }
 .thumb {
   position: relative;

@@ -1,7 +1,7 @@
 {
   "name": "shedule",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.13.1",
   "type": "module",
   "description": "Р­Р»РµРєС‚СЂРѕРЅРЅРѕРµ С‚Р°Р±Р»Рѕ СЂР°СЃРїРёСЃР°РЅРёСЏ СѓСЂРѕРєРѕРІ (Vue 3 + Vite)",
   "scripts": {
