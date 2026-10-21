@@ -32,7 +32,9 @@ function pickTemplate(t) {
   emit('template', t)
 }
 // цвет миниатюры шаблона — по теме его слайда
-const tplType = (t) => t.slide.type
+const tplType = (t) => cls(t.slide.type)
+// класс значка по типу слайда; у «menu» — свой, иначе совпадёт с классом выпадающего меню (.menu)
+const cls = (type) => (type === 'menu' ? 'canteen' : type)
 function pick(type, deck) {
   open.value = false
   emit('add', type, deck)
@@ -60,7 +62,7 @@ onBeforeUnmount(() => {
 
     <div class="menu" :class="{ open }">
       <button v-for="k in KINDS" :key="k.type" class="item" @click="pick(k.type)">
-        <span class="ico" :class="k.type">{{ k.icon }}</span>
+        <span class="ico" :class="cls(k.type)">{{ k.icon }}</span>
         <span class="txt">
           <b>{{ k.title }}</b>
           <small>{{ k.note }}</small>
@@ -206,7 +208,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #e0752a, #7a1f0c);
   font-size: 15px;
 }
-.ico.menu {
+.ico.canteen {
   background: linear-gradient(135deg, #3c9a4a, #0c4a2a);
   font-size: 15px;
 }
@@ -291,7 +293,7 @@ onBeforeUnmount(() => {
 .dot.countdown {
   background: #e0752a;
 }
-.dot.menu {
+.dot.canteen {
   background: #3c9a4a;
 }
 .dot.winners {
