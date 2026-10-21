@@ -32,6 +32,8 @@ import MenuEditor from './MenuEditor.vue'
 import BirthdaysEditor from './BirthdaysEditor.vue'
 import BirthdaysModal from './BirthdaysModal.vue'
 import TodayEditor from './TodayEditor.vue'
+import ClubsEditor from './ClubsEditor.vue'
+import { clubScreens, clubsPlayable, weekCols } from '../clubs.js'
 import { holidaysFor } from '../holidays.js'
 import { todayBirthdays } from '../birthdaysStore.js'
 import { birthdayScreens } from '../birthdays.js'
@@ -67,6 +69,7 @@ function secondsOf(it) {
   if (it.type === 'winners') return winnerScreensOf(it).length * it.duration
   if (it.type === 'menu') return menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals) * it.duration
   if (it.type === 'birthdays') return birthdayScreens(todayBirthdays(it.full)).length * it.duration
+  if (it.type === 'clubs') return clubScreens(it, now.value, weekCols(layoutOf(it) === 'panel')).length * it.duration
   return it.duration
 }
 /** Сколько в среднем идёт одна карточка колоды. */
@@ -91,6 +94,7 @@ function summaryOf(it) {
   else if (it.type === 'deck') p.push(`≈ ${deckSeconds(it)} с карточка`)
   else if (it.type === 'winners') p.push(`${winnerScreensOf(it).length} экр. × ${it.duration} с`)
   else if (it.type === 'birthdays') p.push(`${birthdayScreens(todayBirthdays(it.full)).length} экр. × ${it.duration} с`)
+  else if (it.type === 'clubs') p.push(`${clubScreens(it, now.value, weekCols(layoutOf(it) === 'panel')).length} экр. × ${it.duration} с`)
   else if (it.type === 'menu') p.push(`${menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals)} экр. × ${it.duration} с`)
   else p.push(it.type === 'schedule' ? `${it.duration} с на параллель` : `${it.duration} с`)
   if (it.type === 'changes' && it.skipEmpty) p.push('пропускается, если изменений нет')
@@ -115,9 +119,15 @@ function todayInfo(it) {
   const h = holidaysFor(it, now.value)
   return h.length ? 'сегодня: ' + h.map((x) => x.title).join('; ') : 'сегодня дат нет — слайд пропускается'
 }
+/** Что сейчас на слайде «Кружки и секции». */
+function clubsInfo(it) {
+  if (!it.clubs.length) return 'кружков пока нет'
+  const mode = it.mode === 'week' ? 'вся неделя' : 'сегодня'
+  return `${mode}: ${it.clubs.length} ${plural(it.clubs.length, 'кружок', 'кружка', 'кружков')}` + (clubsPlayable(it, now.value) ? '' : ' — сейчас слайд пропускается')
+}
 /** Текст новости / подпись отсчёта — хвостом сводки. */
 const snippetOf = (it) =>
-  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'today' ? todayInfo(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'today' ? todayInfo(it) : it.type === 'clubs' ? clubsInfo(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const calOpen = ref(false) // календарь показов
@@ -149,6 +159,7 @@ function settingsEdit() {
   if (it?.type === 'menu') menuEdit.value = it
   if (it?.type === 'birthdays') bdEdit.value = it
   if (it?.type === 'today') todayEdit.value = it
+  if (it?.type === 'clubs') clubsEdit.value = it
 }
 
 function remove(i) {
@@ -164,6 +175,7 @@ function copySlide(i) {
   if (copy.type === 'menu') menuEdit.value = playlist.items[i + 1]
   if (copy.type === 'birthdays') bdEdit.value = playlist.items[i + 1]
   if (copy.type === 'today') todayEdit.value = playlist.items[i + 1]
+  if (copy.type === 'clubs') clubsEdit.value = playlist.items[i + 1]
 }
 function settingsCopy() {
   const i = items.value.indexOf(setItem.value)
@@ -223,6 +235,10 @@ function onAdd(type, deck) {
     playlist.items.push(makeSlide('today'))
     todayEdit.value = playlist.items[playlist.items.length - 1]
   }
+  else if (type === 'clubs') {
+    playlist.items.push(makeSlide('clubs'))
+    clubsEdit.value = playlist.items[playlist.items.length - 1]
+  }
   else if (type === 'deck') playlist.items.push(makeSlide('deck', deck))
   else playlist.items.push(makeSlide(type))
 }
@@ -238,6 +254,7 @@ function onTemplate(t) {
   if (it.type === 'menu') menuEdit.value = added
   if (it.type === 'birthdays') bdEdit.value = added
   if (it.type === 'today') todayEdit.value = added
+  if (it.type === 'clubs') clubsEdit.value = added
 }
 function renameTemplate(t) {
   const name = prompt('Новое название шаблона:', t.name)
@@ -298,6 +315,7 @@ const menuEdit = ref(null)
 // именинники: окно слайда и окно списка (список один на всё табло)
 const bdEdit = ref(null)
 const todayEdit = ref(null)
+const clubsEdit = ref(null)
 const bdListOpen = ref(false)
 function addMenu() {
   playlist.items.push(makeSlide('menu'))
@@ -433,6 +451,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'menu'">🍽</span>
             <span v-else-if="it.type === 'birthdays'">🎂</span>
             <span v-else-if="it.type === 'today'">📅</span>
+            <span v-else-if="it.type === 'clubs'">⚽</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
             <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -484,6 +503,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
     <MenuEditor v-if="menuEdit" :item="menuEdit" @close="closeMenu" />
     <TodayEditor v-if="todayEdit" :item="todayEdit" @close="todayEdit = null" />
+    <ClubsEditor v-if="clubsEdit" :item="clubsEdit" @close="clubsEdit = null" />
     <BirthdaysEditor v-if="bdEdit" :item="bdEdit" @close="bdEdit = null" />
     <BirthdaysModal v-if="bdListOpen" @close="bdListOpen = false" />
 
@@ -776,6 +796,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
   font-size: 15px;
+}
+.thumb.clubs {
+  background: linear-gradient(135deg, #2c9aa0, #0c3c58);
+  font-size: 22px;
 }
 .thumb.today {
   background: linear-gradient(135deg, #e0a030, #8a3a0c);

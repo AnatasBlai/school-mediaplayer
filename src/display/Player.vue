@@ -21,6 +21,8 @@ import CountdownSlide from './CountdownSlide.vue'
 import MenuSlide from './MenuSlide.vue'
 import BirthdaysSlide from './BirthdaysSlide.vue'
 import TodaySlide from './TodaySlide.vue'
+import ClubsSlide from './ClubsSlide.vue'
+import { clubsPlayable } from '../clubs.js'
 import { holidaysFor } from '../holidays.js'
 import { todayBirthdays, todayReady } from '../birthdaysStore.js'
 import DeckSlide from './DeckSlide.vue'
@@ -56,6 +58,7 @@ function playable(it) {
   if (it.type === 'menu') return !!menuDay(it, now.value, afterLessons(now.value))
   if (it.type === 'birthdays') return todayBirthdays(it.full).length > 0
   if (it.type === 'today') return holidaysFor(it, now.value).length > 0
+  if (it.type === 'clubs') return clubsPlayable(it, now.value)
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -247,6 +250,13 @@ onBeforeUnmount(() => {
       />
       <TodaySlide
         v-else-if="s.item.type === 'today'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <ClubsSlide
+        v-else-if="s.item.type === 'clubs'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

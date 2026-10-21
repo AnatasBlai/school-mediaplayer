@@ -11,6 +11,7 @@ import { baseConflict, nextUpdated } from './conflict.js'
 import { logChange } from './journal.js'
 import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES, MENU_DAY_KEYS, MENU_DAY_KEYS_2 } from '../src/catalog.js'
 import { HOLIDAY_GROUP_KEYS, validHolidayDate } from '../src/holidays.js'
+import { cleanTimeSlot, normRoom, MAX_CLUBS, MAX_TIMES } from '../src/clubs.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
@@ -171,6 +172,22 @@ export function cleanItem(x) {
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
     it.duration = secs(x.duration, 10)
+  } else if (x.type === 'clubs') {
+    // кружки и секции: режим «сегодня» / «вся неделя»; кружок без названия или без верных занятий выбрасывается
+    it.title = str(x.title, 60)
+    it.mode = x.mode === 'week' ? 'week' : 'today'
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.duration = secs(x.duration, 12) // секунд на один экран
+    it.clubs = (Array.isArray(x.clubs) ? x.clubs : [])
+      .map((c) => ({
+        name: str(c?.name, 60),
+        teacher: str(c?.teacher, 60),
+        room: normRoom(c?.room),
+        who: str(c?.who, 40),
+        times: (Array.isArray(c?.times) ? c.times : []).map(cleanTimeSlot).filter(Boolean).slice(0, MAX_TIMES),
+      }))
+      .filter((c) => c.name && c.times.length)
+      .slice(0, MAX_CLUBS)
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
     if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null

@@ -62,7 +62,7 @@
 - Одноразовые скрипты и скриншоты — в scratchpad, не в проект. Скрипт вне проекта подключает playwright так:
   `createRequire('<путь проекта>/package.json')('playwright')`.
 - **Изолированная копия сервера** (обязательно для всего, что пишет данные): скопировать в scratchpad `api.js server.js
-  package.json server/ dist/ data/ src/deckText.js src/catalog.js src/dataDiff.js src/birthdays.js src/scheduleImport.js` и картинки из `media/` (без видео), запустить там
+  package.json server/ dist/ data/ src/deckText.js src/catalog.js src/dataDiff.js src/birthdays.js src/holidays.js src/clubs.js src/scheduleImport.js` и картинки из `media/` (без видео), запустить там
   `PORT=8090 node server.js`. Так тест не трогает рабочие данные и не виден живым экранам школы.
   Или подменять ответы API в браузере: `page.route('**/api/playlist', r => r.fulfill({ json }))`.
   POST `/api/screens` в тестах тоже подменяй — иначе тестовый «экран» появится в «Сейчас на экране».
@@ -129,6 +129,7 @@ src/
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
   holidays.js      праздники для слайда «Сегодня» без Vue (импортирует сервер): HOLIDAYS (только фиксированные даты ММ-ДД, группы ru|rb|world), HOLIDAY_GROUPS, holidaysFor(it, now) — свои даты 'ММ-ДД' или 'ГГГГ-ММ-ДД' (только в этот год), validHolidayDate
+  clubs.js         кружки без Vue (импортирует сервер): parseClubTimes('Пн, Ср 15:00-15:45; Пт 14:00') → { times, error } (без конца — 45 мин), timesToText/timeLines, parseClubTable (Excel), clubsToday(it, now) со state past|now|next, clubsPlayable, clubScreens(it, now, cols) (сегодня — по 8 строк, закончившиеся тусклые, если не больше 8; неделя — cols×3 карточек, cols 3 / 2 с панелью), cleanTimeSlot
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
   dataDiff.js      diffSchedule/diffPlaylist/diffDecks/diffMedia(a=текущее, b=снимок) → строки по-человечески, limitLines (≤30); без Vue — для окна admin/RestorePreview.vue (возврат из копии) и будущего журнала правок
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
@@ -151,6 +152,7 @@ src/
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     WinnersSlide.vue победители: рамка/фото/анимации скопированы из NewsSlide (её не трогали); экраны групп по очереди,
                    пьедестал 2–1–3, список призёров (шрифт 48→30 по замеру, под пьедесталом ≤ 36); превью — проп group
+    ClubsSlide.vue кружки: «Сегодня» — строки со временем, «ИДЁТ», прошедшие тусклые; «Вся неделя» — карточки сеткой; экраны по очереди на item.duration; в превью (preview) листаются сами
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
   admin/           РЕДАКТОР (ui.css — общие классы a-btn, a-input, a-seg, a-modal, a-switch, a-chips, a-link, a-check…)
@@ -167,7 +169,7 @@ src/
                    компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     ShowCalendar.vue «Календарь показов» (кнопка под «Настройки экрана»): неделя Пн–Вс × слайды, ячейки из `dayShows(when, date)` (rules.js, общая часть с ruleState — `dayRuleState`); только просмотр (`data-ro-allow`), название → SlideSettings
-    MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; BirthdaysEditor.vue — окно слайда именинников, TodayEditor.vue — окно слайда «Сегодня» (группы галочками, свои даты «ДД.ММ[.ГГГГ]», превью), BirthdaysModal.vue — окно списка (кнопка и в левой колонке PlaylistEditor); DeckEditor.vue — раздел «Колоды»
+    MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; BirthdaysEditor.vue — окно слайда именинников, TodayEditor.vue — окно слайда «Сегодня» (группы галочками, свои даты «ДД.ММ[.ГГГГ]», превью), ClubsEditor.vue — окно кружков (режим, список с полем «Пн, Ср 15:00-15:45; Пт 14:00», «Вставить из Excel», превью), BirthdaysModal.vue — окно списка (кнопка и в левой колонке PlaylistEditor); DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
     NowOnScreen.vue + screens.js — «Сейчас на экране» (клик по блоку в PlaylistEditor открывает `/`, при пустом списке — кнопка «Открыть экран ↗»; `data-ro-allow` пропускает это через readonly-перехват) («Убрать из списка» у экрана без связи), silentList → жёлтая плашка в шапке AdminApp (логика — src/screenAlerts.js: >5 мин без связи, учебное время `inSchoolHours` из bells.js, был на связи сегодня/в прошлый учебный день); MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
@@ -209,6 +211,8 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
       days: { '1'…'6' /* Пн–Сб */, при twoWeeks ещё '8'…'13' /* 2-я неделя */: [≤4 × { name ≤30, time ≤20, lines ≤2000 /* «блюдо — выход — цена» */ }] } },  // MENU_DAY_KEYS в catalog.js
     { id, type: 'birthdays', on, title ≤60, full /* «Имя Фамилия» */, theme, anim, duration /* с на экран имён */ },  // список — birthdays.json
     { id, type: 'today',    on, groups: ['ru'|'rb'|'world'|'school'], extra: [≤100 × { d: 'ММ-ДД'|'ГГГГ-ММ-ДД', title ≤80, note ≤160 }] /* свои даты, нужна группа school */, theme, anim, duration },  // праздники — src/holidays.js; нет дат сегодня — слайд пропускается
+    { id, type: 'clubs',    on, title ≤60, mode: 'today'|'week', theme, duration /* с на экран */, clubs: [ ≤60
+      { name ≤60, teacher ≤60, room ≤20, who ≤40, times: [≤6 × { day: 1..6, from: 'ЧЧ:ММ', to: 'ЧЧ:ММ' }] } ] },  // кружок без названия или без верных занятий сервер выбрасывает; «today» пропускается, когда все занятия дня закончились
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
     { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
       { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
@@ -339,5 +343,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.11.1 — значок «Меню столовой» в меню «Добавить слайд» (класс `menu` совпадал с классом выпадающего меню).
 - v0.11.2 — слайд «Именинники» (`birthdays`): список data/birthdays.json (окно, Excel, поиск), /api/birthdays/today для экрана, выходные в понедельник, 29.02; src/birthdays.js + тест.
 - v0.11.3 — слайд «Сегодня» (`today`): праздники и памятные даты дня из src/holidays.js + свои даты (ММ-ДД или на конкретный год), TodaySlide/TodayEditor, тест tests/holidays.test.js.
+- v0.11.4 — слайд «Кружки и секции» (`clubs`): режимы «Сегодня» (ИДЁТ, прошедшие тусклые, пропуск после последнего занятия) и «Вся неделя», вставка из Excel; src/clubs.js + тест.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

@@ -33,6 +33,7 @@ const FILES = [
   'src/catalog.js', // его импортируют server/playlist.js и server/decks.js
   'src/dataDiff.js', // его импортирует server/journal.js
   'src/holidays.js', // его импортирует server/playlist.js
+  'src/clubs.js', // его импортирует server/playlist.js
   'src/birthdays.js', // его импортирует server/birthdays.js
   'src/scheduleImport.js', // его импортирует src/birthdays.js
 ]
