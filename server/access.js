@@ -97,7 +97,7 @@ export function apiBlocked(req) {
 const PAGE = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Редактор закрыт</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#1d1f24;color:#f2f2f2;font:20px/1.5 system-ui,sans-serif}
 div{max-width:560px;padding:32px}h1{font-size:26px;margin:0 0 12px}p{margin:0;color:#aeb4bf}</style></head><body><div>
-<h1>Редактор табло закрыт</h1><p>Редактор табло открывается только с компьютеров учителей. Обратитесь к администратору табло.</p></div></body></html>`
+<h1>Редактор табло закрыт</h1><p>Редактор табло открывается только с компьютеров учителей. Обратитесь к администратору табло (Шайхисламов С.Б.).</p></div></body></html>`
 
 /** Страница /admin с неразрешённого компьютера: отдаёт заглушку, true — запрос обработан. */
 export function guardAdminPage(req, res) {
