@@ -9,6 +9,7 @@ import { handleApi, MIME } from './api.js'
 import { startBackupScheduler } from './server/backup.js'
 import { migrateOldPassword } from './server/auth.js'
 import { startJournal } from './server/journal.js'
+import { startWeatherScheduler } from './server/weather.js'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(ROOT, 'dist')
@@ -51,6 +52,7 @@ const server = http.createServer((req, res) => {
 // резервные копии по расписанию — только на боевом сервере
 startBackupScheduler()
 startJournal() // чистка старых версий в data/history/
+startWeatherScheduler() // погода раз в 30 мин, только если включена в настройках
 
 server.listen(PORT, '0.0.0.0', () => {
   const lan = []

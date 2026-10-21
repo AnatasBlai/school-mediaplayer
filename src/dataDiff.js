@@ -4,7 +4,7 @@
 // Результат — массив строк; пустой массив — разницы нет.
 
 const DAYS = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-const SLIDE_NAMES = { schedule: 'Расписание', changes: 'Изменения', image: 'Фото', video: 'Видео', news: 'Новость', countdown: 'Отсчёт', menu: 'Меню столовой', birthdays: 'Именинники', today: 'Сегодня', clubs: 'Кружки и секции', deck: 'Колода', winners: 'Победители' }
+const SLIDE_NAMES = { schedule: 'Расписание', changes: 'Изменения', image: 'Фото', video: 'Видео', news: 'Новость', countdown: 'Отсчёт', menu: 'Меню столовой', birthdays: 'Именинники', today: 'Сегодня', clubs: 'Кружки и секции', weather: 'Погода', deck: 'Колода', winners: 'Победители' }
 
 const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null)
 const plural = (n, one, few, many) => {
@@ -103,6 +103,7 @@ export function slideName(it, dict = {}) {
   if (it.type === 'birthdays') return 'Именинники дня'
   if (it.type === 'today') return 'Сегодня: праздники и даты'
   if (it.type === 'clubs') return 'Кружки и секции'
+  if (it.type === 'weather') return 'Погода и прогноз'
   if (it.type === 'deck') return dict.decks?.[it.deck] || 'Колода'
   return dict.media?.[it.media] || SLIDE_NAMES[it.type] || 'Слайд'
 }

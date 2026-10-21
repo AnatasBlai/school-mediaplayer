@@ -8,6 +8,9 @@ import { bellsForDay, bellStatus } from '../bells.js'
 import BellWidget from '../components/BellWidget.vue'
 import Clock from '../components/Clock.vue'
 import { vFit } from '../fit.js'
+import { useWeather } from '../weatherStore.js'
+import { weatherLine, weatherKind } from '../weather.js'
+import WeatherIcon from './WeatherIcon.vue'
 
 const props = defineProps({ inStage: Boolean })
 
@@ -22,6 +25,11 @@ function fit() {
 }
 
 const now = ref(new Date())
+
+// погода под часами; нет свежих данных — строки нет (место не резервируем)
+const wx = useWeather()
+const wxLine = computed(() => weatherLine(wx.value))
+const wxKind = computed(() => weatherKind(wx.value?.current.code).icon)
 
 const DAYS_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
@@ -66,6 +74,7 @@ onBeforeUnmount(() => {
         <div v-fit="30" class="day-name">{{ dayName }}</div>
         <div class="date">{{ dateText }}</div>
         <div class="clock"><Clock :date="now" /></div>
+        <div v-if="wxLine" class="wx"><WeatherIcon :kind="wxKind" class="wx-ico" /><span v-fit="16" class="wx-text">{{ wxLine }}</span></div>
 
         <BellWidget :status="bell" />
 
@@ -145,6 +154,26 @@ onBeforeUnmount(() => {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
+}
+
+.wx {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.1;
+}
+.wx-ico {
+  flex: none;
+  font-size: 44px;
+}
+.wx-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .changes {

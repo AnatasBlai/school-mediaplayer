@@ -7,6 +7,7 @@
 //   /api/birthdays* — именинники: список (после входа) и «сегодня» для экрана (server/birthdays.js)
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
+//   /api/weather — погода из Open-Meteo, открыт (server/weather.js)
 //   /api/status  — состояние системы: диск, копии, версия (server/status.js)
 //   /api/journal* — журнал правок и откат (server/journal.js)
 //   /api/auth*   — входы и права; запись без входа — 401, без права на раздел — 403 (server/auth.js)
@@ -21,6 +22,7 @@ import { handleDecks } from './server/decks.js'
 import { handleBirthdays } from './server/birthdays.js'
 import { handleBackup } from './server/backup.js'
 import { handleStatus } from './server/status.js'
+import { handleWeather } from './server/weather.js'
 import { isAllowed, handleAuth } from './server/auth.js'
 import { baseConflict, nextUpdated } from './server/conflict.js'
 import { handleJournal, logChange } from './server/journal.js'
@@ -132,7 +134,7 @@ export function handleApi(req, res) {
     handleScreens(req, res)
     return true
   }
-  return handleJournal(req, res) || handleDecks(req, res) || handleBirthdays(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
+  return handleJournal(req, res) || handleDecks(req, res) || handleWeather(req, res) || handleBirthdays(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
 }
 
 export function apiPlugin() {

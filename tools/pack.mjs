@@ -34,6 +34,7 @@ const FILES = [
   'src/dataDiff.js', // его импортирует server/journal.js
   'src/holidays.js', // его импортирует server/playlist.js
   'src/clubs.js', // его импортирует server/playlist.js
+  'src/weather.js', // его импортирует server/weather.js
   'src/birthdays.js', // его импортирует server/birthdays.js
   'src/scheduleImport.js', // его импортирует src/birthdays.js
 ]

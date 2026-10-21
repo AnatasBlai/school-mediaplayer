@@ -5,7 +5,7 @@ import { decks } from '../decks.js'
 import { playlist, BUILTIN_TEMPLATES } from '../playlist.js'
 import { can } from './auth.js'
 
-const emit = defineEmits(['add', 'template', 'rename-template', 'remove-template']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | menu | birthdays | today | clubs | deck; template(шаблон)
+const emit = defineEmits(['add', 'template', 'rename-template', 'remove-template']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | menu | birthdays | today | clubs | weather | deck; template(шаблон)
 
 const KINDS = [
   { type: 'media', icon: '▣', title: 'Фото или видео', note: 'Файлы из медиатеки' },
@@ -18,6 +18,7 @@ const KINDS = [
   { type: 'birthdays', icon: '🎂', title: 'Именинники', note: 'Сам поздравляет с днём рождения' },
   { type: 'today', icon: '📅', title: 'Сегодня', note: 'Праздники и памятные даты дня' },
   { type: 'clubs', icon: '⚽', title: 'Кружки и секции', note: 'Какие занятия сегодня и в какое время' },
+  { type: 'weather', icon: '🌤', title: 'Погода', note: 'Сейчас и прогноз на три дня (нужен интернет)' },
 ]
 
 const open = ref(false)
@@ -223,6 +224,10 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #2c9aa0, #0c3c58);
   font-size: 15px;
 }
+.ico.weather {
+  background: linear-gradient(135deg, #4aa8e8, #1c4a8a);
+  font-size: 17px;
+}
 .ico.birthdays {
   background: linear-gradient(135deg, #e04a8a, #6a0c3a);
   font-size: 15px;
@@ -316,6 +321,9 @@ onBeforeUnmount(() => {
 }
 .dot.clubs {
   background: #2c9aa0;
+}
+.dot.weather {
+  background: #4aa8e8;
 }
 .dot.birthdays {
   background: #e04a8a;

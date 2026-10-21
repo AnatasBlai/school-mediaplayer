@@ -3,7 +3,7 @@
 // добавил ключ здесь — добавь и там (расхождение ловит tests/catalog.test.js).
 export const THEME_KEYS = ['5', '6', '7', '8', '9', '10', '11', 'changes', 'sea', 'sunset', 'mint', 'graphite', 'lavender', 'royal']
 export const BOARD_THEME_KEYS = ['5', '6', '7', '8', '9', '10', '11', 'changes']
-export const SLIDE_TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'winners', 'countdown', 'menu', 'birthdays', 'today', 'clubs', 'deck']
+export const SLIDE_TYPES = ['schedule', 'changes', 'image', 'video', 'news', 'winners', 'countdown', 'menu', 'birthdays', 'today', 'clubs', 'weather', 'deck']
 export const LAYOUTS = ['full', 'panel']
 export const NEWS_ANIM_KEYS = ['none', 'zoom', 'drift', 'parallax', 'rise']
 // ключи дней слайда «Меню»: 1–6 = Пн–Сб, 8–13 = Пн–Сб второй недели (при twoWeeks)

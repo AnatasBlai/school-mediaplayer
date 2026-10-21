@@ -22,7 +22,9 @@ import MenuSlide from './MenuSlide.vue'
 import BirthdaysSlide from './BirthdaysSlide.vue'
 import TodaySlide from './TodaySlide.vue'
 import ClubsSlide from './ClubsSlide.vue'
+import WeatherSlide from './WeatherSlide.vue'
 import { clubsPlayable } from '../clubs.js'
+import { useWeather, weatherLoaded } from '../weatherStore.js'
 import { holidaysFor } from '../holidays.js'
 import { todayBirthdays, todayReady } from '../birthdaysStore.js'
 import DeckSlide from './DeckSlide.vue'
@@ -47,6 +49,7 @@ const screenName = new URLSearchParams(location.search).get('name') || ''
 
 // время для правил показа; обновляем раз в 10 с — этого хватает, слайды всё равно длиннее
 const now = ref(new Date())
+const weather = useWeather()
 
 function playable(it) {
   if (!it.on || !ruleState(it.when, now.value, isBreak).ok || !screenAllowed(it.screens, screenName)) return false
@@ -59,6 +62,7 @@ function playable(it) {
   if (it.type === 'birthdays') return todayBirthdays(it.full).length > 0
   if (it.type === 'today') return holidaysFor(it, now.value).length > 0
   if (it.type === 'clubs') return clubsPlayable(it, now.value)
+  if (it.type === 'weather') return !!weather.value // нет свежих данных (или погода выключена) — слайд пропускается
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -140,9 +144,10 @@ watch(
   (gone) => gone && advance(),
 )
 
-// старт: ждём плейлист, медиатеку, колоды и именинников (иначе слайды в начале плейлиста пропустятся), но не дольше 5 с
+// старт: ждём плейлист, медиатеку, колоды, именинников и погоду (иначе слайды в начале плейлиста пропустятся), но не дольше 5 с
 const birthdaysReady = computed(() => playlist.items.every((it) => it.type !== 'birthdays' || todayReady(it.full)))
-const ready = computed(() => playlistLoaded.value && mediaLoaded.value && decksLoaded.value && birthdaysReady.value)
+const weatherReady = computed(() => weatherLoaded.value || playlist.items.every((it) => it.type !== 'weather'))
+const ready = computed(() => playlistLoaded.value && mediaLoaded.value && decksLoaded.value && birthdaysReady.value && weatherReady.value)
 const startTimer = setTimeout(() => !cur.value && advance(), 5000)
 watch(ready, (r) => r && !cur.value && advance(), { immediate: true })
 
@@ -257,6 +262,13 @@ onBeforeUnmount(() => {
       />
       <ClubsSlide
         v-else-if="s.item.type === 'clubs'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <WeatherSlide
+        v-else-if="s.item.type === 'weather'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

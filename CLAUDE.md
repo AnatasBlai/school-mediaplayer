@@ -23,7 +23,7 @@
 ## Стек и запуск
 
 - Vue 3 (`<script setup>`, Composition API) + Vite 6. Без TypeScript, роутера, Pinia. Сервер — Node без зависимостей.
-- Шрифт Montserrat 600/800/900 локально (`@fontsource`). Интернет табло не нужен.
+- Шрифт Montserrat 600/800/900 локально (`@fontsource`). Интернет нужен только для погоды (Open-Meteo), без него погода скрывается.
 - Windows, bat-файлы (UTF-8, `chcp 65001`; CRLF ставит git по .gitattributes):
   - `start.bat` → `node server.js` — боевой сервер, порт **8080**: `/` экран, `/admin` редактор;
   - `dev.bat` → Vite, порт 5173; `build.bat` → `npm run build` (**после правок кода пересобрать `dist/`**);
@@ -110,6 +110,7 @@ server/
   journal.js       журнал правок: logChange(req, area, before, after, opts) / logEvent / resetGroups; группа = один человек + один раздел,
                    пауза < 2 мин; перед группой файл «до» → data/history/<area>/<мс>.json; GET /api/journal?area&user&day&before&since&limit,
                    POST /api/journal/<id>/revert (право на раздел записи — `can` из auth.js; в WRITE_RIGHTS это 'login'); startJournal() — чистка
+  weather.js       погода из Open-Meteo раз в 30 мин (после ошибки — 5 мин; fetch, тайм-аут 10 с; только если `settings.weather.on`) → data/weather.json; GET /api/weather (открыт; выключена → `{ off: true }`), SSE `weather`; weatherSummary() для status.js; планировщик — startWeatherScheduler() из server.js
   status.js        GET /api/status — версия, время работы, диск (diskSpace из backup.js), объём data/media, backupSummary(), пароль; без секретов
   screens.js       POST/GET /api/screens — что показывают экраны (в памяти)
 src/
@@ -129,6 +130,8 @@ src/
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
   holidays.js      праздники для слайда «Сегодня» без Vue (импортирует сервер): HOLIDAYS (только фиксированные даты ММ-ДД, группы ru|rb|world), HOLIDAY_GROUPS, holidaysFor(it, now) — свои даты 'ММ-ДД' или 'ГГГГ-ММ-ДД' (только в этот год), validHolidayDate
+  weather.js       погода без Vue (импортирует сервер): таблица кодов WMO → значок+слово (weatherKind), parseForecast, cleanWeatherSettings, isFresh (6 ч), fmtTemp, weatherTitle, nextDays, weatherLine
+  weatherStore.js  useWeather() → freshWeather (null, если данных нет/устарели/выключено); /api/weather при первом вызове, по SSE, раз в 5 мин; weatherLoaded — Player ждёт её на старте
   clubs.js         кружки без Vue (импортирует сервер): parseClubTimes('Пн, Ср 15:00-15:45; Пт 14:00') → { times, error } (без конца — 45 мин), timesToText/timeLines, parseClubTable (Excel), clubsToday(it, now) со state past|now|next, clubsPlayable, clubScreens(it, now, cols) (сегодня — по 8 строк, закончившиеся тусклые, если не больше 8; неделя — cols×3 карточек, cols 3 / 2 с панелью), cleanTimeSlot
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
   dataDiff.js      diffSchedule/diffPlaylist/diffDecks/diffMedia(a=текущее, b=снимок) → строки по-человечески, limitLines (≤30); без Vue — для окна admin/RestorePreview.vue (возврат из копии) и будущего журнала правок
@@ -152,6 +155,7 @@ src/
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
     WinnersSlide.vue победители: рамка/фото/анимации скопированы из NewsSlide (её не трогали); экраны групп по очереди,
                    пьедестал 2–1–3, список призёров (шрифт 48→30 по замеру, под пьедесталом ≤ 36); превью — проп group
+    WeatherSlide.vue погода: температура+значок+слово+ветер, 3 дня карточками; WeatherIcon.vue — свои SVG (sun|partly|cloud|rain|snow|storm|fog); строка «−3° · облачно» под часами в InfoPanel и CalendarPanel (нет данных — строки нет)
     ClubsSlide.vue кружки: «Сегодня» — строки со временем, «ИДЁТ», прошедшие тусклые; «Вся неделя» — карточки сеткой; экраны по очереди на item.duration; в превью (preview) листаются сами
     DeckSlide.vue  логика колоды (выбор карточки, фазы вопрос→ответ); DeckCard.vue — отрисовка карточки
     InfoPanel.vue  панель справа (шаблон 'panel'): день, дата, часы, звонок, изменения; inStage — внутри SlideStage
@@ -188,7 +192,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
 **schedule.json** — правится через сайт (PUT целиком):
 ```js
 { version: 1, updatedAt,                     // по updatedAt клиенты понимают, что данные новее
-  settings: { lessonsCount /* строк, 9 */, changesDate /* 'ГГГГ-ММ-ДД' | '' — на какой день изменения; после него экран их не показывает */, letters: { "5": ["А","Б"…] … }, changesCols, bells: [{ name, days, text }] },
+  settings: { weather: { on: false, place: 'Учалы', lat: 54.32, lon: 59.38 } /* погода; сервер читает отсюда, выключена — в интернет не ходит; окно SettingsModal */, lessonsCount /* строк, 9 */, changesDate /* 'ГГГГ-ММ-ДД' | '' — на какой день изменения; после него экран их не показывает */, letters: { "5": ["А","Б"…] … }, changesCols, bells: [{ name, days, text }] },
   schedule: { "<параллель>": { "<день 1..6>": { "<буква>": [ { s: предмет, r: кабинет } ] } } },
   changes:  { ch0: [ { c: класс, t: текст, r: кабинет } ], ch1, ch2 } }
 ```
@@ -213,6 +217,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
     { id, type: 'today',    on, groups: ['ru'|'rb'|'world'|'school'], extra: [≤100 × { d: 'ММ-ДД'|'ГГГГ-ММ-ДД', title ≤80, note ≤160 }] /* свои даты, нужна группа school */, theme, anim, duration },  // праздники — src/holidays.js; нет дат сегодня — слайд пропускается
     { id, type: 'clubs',    on, title ≤60, mode: 'today'|'week', theme, duration /* с на экран */, clubs: [ ≤60
       { name ≤60, teacher ≤60, room ≤20, who ≤40, times: [≤6 × { day: 1..6, from: 'ЧЧ:ММ', to: 'ЧЧ:ММ' }] } ] },  // кружок без названия или без верных занятий сервер выбрасывает; «today» пропускается, когда все занятия дня закончились
+    { id, type: 'weather',  on, theme, duration },   // данные — data/weather.json; нет свежих (≤ 6 ч) или погода выключена — слайд пропускается
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
     { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
       { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
@@ -231,6 +236,7 @@ from > to — через полночь. Нет файла → плейлист 
 **birthdays.json** `{ version: 1, updatedAt, items: [{ id, name ≤80 /* «Фамилия Имя Отчество» */, cls ≤10 /* '8А' | 'учитель' */, d: 'ММ-ДД' }] }`.
 **Личные данные**: только день и месяц (год не хранить), полный список — только после входа, экран получает лишь сегодняшних без дат
 (/today), в журнал — только числа (diffBirthdays), в архивы pack.mjs не входит (там белый список файлов data/); в резервные копии входит.
+**weather.json** `{ at /* последний удачный запрос */, tried, ok, error?, place, lat, lon, current: { temp, code, wind }, daily: [{ date, code, max, min }] }` — служебный, не в снимках копий (`isDataFile`) и не в архивах pack.mjs.
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
 **users.json** `{ users: [{ id, name, login, salt, hash, rights: [schedule|playlist|decks|media|admin], disabled }] }` (нет файла — входов нет, всё открыто)
@@ -344,5 +350,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.11.2 — слайд «Именинники» (`birthdays`): список data/birthdays.json (окно, Excel, поиск), /api/birthdays/today для экрана, выходные в понедельник, 29.02; src/birthdays.js + тест.
 - v0.11.3 — слайд «Сегодня» (`today`): праздники и памятные даты дня из src/holidays.js + свои даты (ММ-ДД или на конкретный год), TodaySlide/TodayEditor, тест tests/holidays.test.js.
 - v0.11.4 — слайд «Кружки и секции» (`clubs`): режимы «Сегодня» (ИДЁТ, прошедшие тусклые, пропуск после последнего занятия) и «Вся неделя», вставка из Excel; src/clubs.js + тест.
+- v0.11.5 — погода: server/weather.js (Open-Meteo, data/weather.json), строка в боковых панелях, слайд `weather`, настройки в SettingsModal, строка в «Состоянии»; src/weather.js + тест. Проверено на копии с реальным интернетом и с подменой ответов.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

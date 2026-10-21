@@ -36,6 +36,8 @@ import ClubsEditor from './ClubsEditor.vue'
 import { clubScreens, clubsPlayable, weekCols } from '../clubs.js'
 import { holidaysFor } from '../holidays.js'
 import { todayBirthdays } from '../birthdaysStore.js'
+import { useWeather } from '../weatherStore.js'
+import { weatherLine } from '../weather.js'
 import { birthdayScreens } from '../birthdays.js'
 import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
@@ -125,9 +127,13 @@ function clubsInfo(it) {
   const mode = it.mode === 'week' ? 'вся неделя' : 'сегодня'
   return `${mode}: ${it.clubs.length} ${plural(it.clubs.length, 'кружок', 'кружка', 'кружков')}` + (clubsPlayable(it, now.value) ? '' : ' — сейчас слайд пропускается')
 }
+/** Есть ли сейчас погода для слайда. */
+function weatherInfo() {
+  return wx.value ? 'сейчас ' + weatherLine(wx.value) : 'нет свежих данных о погоде — слайд пропускается'
+}
 /** Текст новости / подпись отсчёта — хвостом сводки. */
 const snippetOf = (it) =>
-  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'today' ? todayInfo(it) : it.type === 'clubs' ? clubsInfo(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'today' ? todayInfo(it) : it.type === 'clubs' ? clubsInfo(it) : it.type === 'weather' ? weatherInfo() : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const calOpen = ref(false) // календарь показов
@@ -314,6 +320,7 @@ function closeCountdown() {
 const menuEdit = ref(null)
 // именинники: окно слайда и окно списка (список один на всё табло)
 const bdEdit = ref(null)
+const wx = useWeather()
 const todayEdit = ref(null)
 const clubsEdit = ref(null)
 const bdListOpen = ref(false)
@@ -452,6 +459,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'birthdays'">🎂</span>
             <span v-else-if="it.type === 'today'">📅</span>
             <span v-else-if="it.type === 'clubs'">⚽</span>
+            <span v-else-if="it.type === 'weather'">🌤</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
             <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -803,6 +811,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.today {
   background: linear-gradient(135deg, #e0a030, #8a3a0c);
+  font-size: 22px;
+}
+.thumb.weather {
+  background: linear-gradient(135deg, #4aa8e8, #1c4a8a);
   font-size: 22px;
 }
 .thumb.birthdays {

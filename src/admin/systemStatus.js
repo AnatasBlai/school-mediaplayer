@@ -87,6 +87,14 @@ export const rows = computed(() => {
     Object.assign(cr, { level: 'warn', value: `Часы расходятся на ${min} мин`, hint: 'Звонки на экранах могут показываться неверно — поставьте точное время' })
   out.push(cr)
 
+  const wx = d.weather
+  if (wx?.on) {
+    const hm = (t) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    const lost = !wx.ok || (wx.at && d.now - wx.at > 2 * 3600e3)
+    if (lost) out.push({ name: 'Погода', level: 'warn', value: wx.at ? `нет связи с интернетом с ${hm(wx.at)}` : 'нет связи с интернетом', hint: 'Погода не показывается. Проверьте интернет на этом ПК (или прокси / фильтр школы)' })
+    else out.push({ name: 'Погода', level: 'ok', value: wx.at ? `обновлена ${hm(wx.at)}` : 'ещё не загружалась' })
+  } else out.push({ name: 'Погода', level: 'ok', value: 'выключена' })
+
   out.push(
     d.auth.required
       ? { name: 'Входы в редактор', level: 'ok', value: 'заданы' }

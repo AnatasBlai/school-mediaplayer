@@ -82,3 +82,12 @@ test('cleanTemplates: имя ≤40, слайд чистится, id и on не �
   assert.equal(cleanTemplates(null).length, 0)
   assert.equal(cleanTemplates(Array.from({ length: 60 }, (_, i) => ({ name: 'n' + i, slide: { type: 'news' } }))).length, 50)
 })
+
+test('cleanItem: weather — тема и длительность, лишнее выбрасывается', () => {
+  const it = cleanItem({ type: 'weather', id: 'abcd1', theme: 'нет', duration: 99999, lat: 5 })
+  assert.equal(it.type, 'weather')
+  assert.equal(it.theme, '6')
+  assert.ok(it.duration >= 3 && it.duration <= 3600)
+  assert.equal(it.lat, undefined)
+  assert.equal(cleanItem({ type: 'weather', theme: 'sea' }).theme, 'sea')
+})

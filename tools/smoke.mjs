@@ -55,7 +55,7 @@ try {
   for (const f of ['api.js', 'server.js', 'package.json']) fs.copyFileSync(path.join(ROOT, f), path.join(copy, f))
   for (const d of ['server', 'dist']) copyDir(path.join(ROOT, d), path.join(copy, d))
   fs.mkdirSync(path.join(copy, 'src'))
-  for (const f of ['deckText.js', 'catalog.js', 'dataDiff.js', 'birthdays.js', 'holidays.js', 'clubs.js', 'scheduleImport.js']) fs.copyFileSync(path.join(ROOT, 'src', f), path.join(copy, 'src', f))
+  for (const f of ['deckText.js', 'catalog.js', 'dataDiff.js', 'birthdays.js', 'holidays.js', 'clubs.js', 'weather.js', 'scheduleImport.js']) fs.copyFileSync(path.join(ROOT, 'src', f), path.join(copy, 'src', f))
   if (withData && fs.existsSync(path.join(ROOT, 'data'))) {
     const secret = ['auth.json', 'sessions.json', 'users.json', 'media.json', 'backup.json']
     copyDir(path.join(ROOT, 'data'), path.join(copy, 'data'), (n) => secret.includes(n))

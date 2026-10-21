@@ -1,6 +1,7 @@
 // Начальные данные. День недели: 1 — понедельник … 6 — суббота.
 import { DEFAULT_BELLS } from './bells.js'
 import { GRADES } from './catalog.js'
+import { DEFAULT_WEATHER } from './weather.js'
 export { GRADES }
 
 const L = (s, r = '') => ({ s, r })
@@ -19,6 +20,7 @@ export function createDefaultData() {
       changesHideEmpty: true,
       changesCols: 3,
       changesDate: '', // 'ГГГГ-ММ-ДД' — на какой день изменения; после этого дня экран их не показывает; '' — всегда
+      weather: { ...DEFAULT_WEATHER }, // погода из интернета (server/weather.js): on, place, lat, lon
       // расписание звонков (группы дней)
       bells: DEFAULT_BELLS.map((b) => ({ ...b, days: [...b.days] })),
       letters: {

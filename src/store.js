@@ -3,6 +3,7 @@ import { createDefaultData, GRADES } from './defaultData.js'
 import { bellsForDay, bellStatus } from './bells.js'
 import { makeSaver } from './saver.js'
 import { sortChangeRows } from './classMarks.js'
+import { cleanWeatherSettings } from './weather.js'
 
 const LS_KEY = 'shedule-data-v1'
 
@@ -22,6 +23,7 @@ function normalize(d) {
     schedule: d?.schedule && typeof d.schedule === 'object' ? d.schedule : def.schedule,
     changes: d?.changes && typeof d.changes === 'object' ? d.changes : def.changes,
   }
+  out.settings.weather = cleanWeatherSettings(d?.settings?.weather)
   out.settings.letters = { ...def.settings.letters, ...(d?.settings?.letters || {}) }
   out.settings.interval = clamp(Number(out.settings.interval) || 15, 3, 600)
   out.settings.lessonsCount = clamp(Number(out.settings.lessonsCount) || 8, 1, 12)

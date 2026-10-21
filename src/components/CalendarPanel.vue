@@ -3,6 +3,9 @@ import { computed, ref, watch } from 'vue'
 import BellWidget from './BellWidget.vue'
 import Clock from './Clock.vue'
 import { vFit } from '../fit.js'
+import { useWeather } from '../weatherStore.js'
+import { weatherLine, weatherKind } from '../weather.js'
+import WeatherIcon from '../display/WeatherIcon.vue'
 
 const props = defineProps({
   today: Date, // текущая дата (обновляется каждую секунду)
@@ -25,6 +28,11 @@ watch(
   () => props.viewDate,
   (d) => (month.value = new Date(d.getFullYear(), d.getMonth(), 1)),
 )
+
+// погода под часами; нет свежих данных — строки нет
+const wx = useWeather()
+const wxLine = computed(() => weatherLine(wx.value))
+const wxKind = computed(() => weatherKind(wx.value?.current.code).icon)
 
 const dayName = computed(() => DAYS_FULL[props.viewDate.getDay()])
 const dateText = computed(() => {
@@ -79,6 +87,8 @@ function shift(n) {
       <span class="clock"><Clock :date="today" /></span>
     </div>
 
+    <div v-if="wxLine" class="wx"><WeatherIcon :kind="wxKind" class="wx-ico" /><span v-fit="16" class="wx-text">{{ wxLine }}</span></div>
+
     <BellWidget :status="bell" />
 
     <div class="cal">
@@ -129,6 +139,26 @@ function shift(n) {
     0 10px 30px rgba(0, 0, 0, 0.16);
   backdrop-filter: blur(6px);
   text-shadow: var(--shadow-text);
+}
+
+.wx {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1.1;
+}
+.wx-ico {
+  flex: none;
+  font-size: 38px;
+}
+.wx-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .day-name {

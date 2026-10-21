@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { state, GRADES, clearChanges } from '../store.js'
 import { parseBells } from '../bells.js'
+import { cleanWeatherSettings } from '../weather.js'
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
@@ -11,6 +12,7 @@ const form = reactive({
   lessonsCount: state.settings.lessonsCount,
   letters: Object.fromEntries(GRADES.map((g) => [g, (state.settings.letters[g] || []).join(' ')])),
   changesCols: state.settings.changesCols,
+  weather: { ...state.settings.weather },
   bells: state.settings.bells.map((b) => ({ name: b.name, days: [...b.days], text: b.text })),
 })
 const confirmClear = ref(false)
@@ -55,6 +57,7 @@ function save() {
   for (const g of GRADES) letters[g] = parseLetters(form.letters[g])
   state.settings.letters = letters
   state.settings.changesCols = Math.min(3, Math.max(2, Number(form.changesCols) || 3))
+  state.settings.weather = cleanWeatherSettings({ ...form.weather, lat: String(form.weather.lat).replace(',', '.'), lon: String(form.weather.lon).replace(',', '.') })
   state.settings.bells = form.bells.map((b) => ({ name: b.name, days: [...b.days], text: b.text.trim() }))
   emit('close')
 }
@@ -112,6 +115,30 @@ async function importJson(e) {
         <button class="btn danger" @click="doClear">
           {{ confirmClear ? 'Точно удалить? Нажмите ещё раз' : 'Очистить все изменения' }}
         </button>
+      </div>
+
+      <h3>Погода</h3>
+      <p class="help">Сервер раз в полчаса берёт погоду из интернета (open-meteo.com) и показывает её в боковой панели и на слайде «Погода». Без интернета погода просто не показывается.</p>
+      <div class="row">
+        <span>Показывать погоду</span>
+        <div class="seg">
+          <button :class="{ on: form.weather.on }" @click="form.weather.on = true">Да</button>
+          <button :class="{ on: !form.weather.on }" @click="form.weather.on = false">Нет</button>
+        </div>
+      </div>
+      <div v-if="form.weather.on" class="letters">
+        <label>
+          <span>Место</span>
+          <input v-model="form.weather.place" type="text" placeholder="Учалы" />
+        </label>
+        <label>
+          <span>Широта</span>
+          <input v-model="form.weather.lat" type="text" placeholder="54.32" />
+        </label>
+        <label>
+          <span>Долгота</span>
+          <input v-model="form.weather.lon" type="text" placeholder="59.38" />
+        </label>
       </div>
 
       <h3>Расписание звонков</h3>

@@ -7,6 +7,7 @@ import { playlist, mediaById, slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout
 import { decks, deckById, avgCardSeconds } from '../decks.js'
 import { DAY_SHORT, EMPTY_WHEN, hasRules, ruleState } from '../rules.js'
 import { thumbUrl, fmtDuration } from './mediaApi.js'
+import ThemeSwatches from './ThemeSwatches.vue'
 
 const props = defineProps({ item: Object, now: Date }) // слайд из playlist.items — правим прямо его
 const emit = defineEmits(['close', 'copy', 'remove', 'edit']) // edit — открыть окно новости / победителей / отсчёта
@@ -122,6 +123,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else-if="it.type === 'birthdays'">🎂</span>
           <span v-else-if="it.type === 'today'">📅</span>
           <span v-else-if="it.type === 'clubs'">⚽</span>
+          <span v-else-if="it.type === 'weather'">🌤</span>
           <span v-else-if="it.type === 'deck'">?!</span>
         </div>
         <div class="ttl">
@@ -135,6 +137,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <!-- новость, победители и отсчёт правятся в своём окне -->
         <div v-if="EDIT_TEXT[it.type]" class="sec">
           <button class="a-btn edit" @click="emit('edit')">✎ {{ EDIT_TEXT[it.type] }}</button>
+        </div>
+
+        <div v-if="it.type === 'weather'" class="sec">
+          <span class="a-label">Цвет</span>
+          <div class="val"><ThemeSwatches v-model="it.theme" /></div>
+          <span class="a-hint">Погоду берёт сервер из интернета; включается в «Настройках» табло. Нет свежих данных — слайд пропускается.</span>
         </div>
 
         <div class="sec">
@@ -332,6 +340,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.today {
   background: linear-gradient(135deg, #e0a030, #8a3a0c);
+  font-size: 22px;
+}
+.thumb.weather {
+  background: linear-gradient(135deg, #4aa8e8, #1c4a8a);
   font-size: 22px;
 }
 .thumb.birthdays {

@@ -188,6 +188,10 @@ export function cleanItem(x) {
       }))
       .filter((c) => c.name && c.times.length)
       .slice(0, MAX_CLUBS)
+  } else if (x.type === 'weather') {
+    // погода: сами данные — data/weather.json (server/weather.js), в слайде только оформление
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.duration = secs(x.duration, 12)
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
     if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null

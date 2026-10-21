@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { backupSummary, diskSpace, folderSize } from './backup.js'
 import { authRequired } from './auth.js'
+import { weatherSummary } from './weather.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const startedAt = Date.now()
@@ -28,6 +29,7 @@ async function status() {
     media,
     backup: backupSummary(),
     auth: { required: authRequired() },
+    weather: weatherSummary(),
   }
 }
 
