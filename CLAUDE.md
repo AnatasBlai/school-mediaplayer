@@ -128,6 +128,7 @@ src/
   birthdaysStore.js полный список (грузится при открытии окна, saver) и todayBirthdays(full)/todayReady — /today при старте, по SSE, в полночь
   winners.js       победители без Vue: parseLine «8А ФИО», podiumOf, winnerScreens(item, cols) — экраны (≤5 под
                    пьедесталом, остальное — «продолжение» поровну по cols×11), listCols; в playlist.js winnerScreensOf(it)
+  holidays.js      праздники для слайда «Сегодня» без Vue (импортирует сервер): HOLIDAYS (только фиксированные даты ММ-ДД, группы ru|rb|world), HOLIDAY_GROUPS, holidaysFor(it, now) — свои даты 'ММ-ДД' или 'ГГГГ-ММ-ДД' (только в этот год), validHolidayDate
   catalog.js       ключи тем, типов слайдов, шаблонов, анимаций, параллелей (клиент и сервер, без Vue)
   dataDiff.js      diffSchedule/diffPlaylist/diffDecks/diffMedia(a=текущее, b=снимок) → строки по-человечески, limitLines (≤30); без Vue — для окна admin/RestorePreview.vue (возврат из копии) и будущего журнала правок
   deckText.js      формат «вставить списком» (parseCards/cardsToText) — общий с сервером, без Vue
@@ -144,6 +145,7 @@ src/
                    FALLBACK (расписание). Гашение экрана (blank). Ticker.vue — бегущая строка поверх (z 4, под гашением) Отчёт POST /api/screens (slide.urgent). Срочный режим (`urgentItem`): `following()` всегда отдаёт этот слайд без on/«Когда», `blanked` не действует, смена режима → `advance()`. now — раз в 10 с
     MediaSlide.vue фото/видео (fit cover|contain, звук, layout full|panel)
     MenuSlide.vue  меню столовой на SlideStage: карточки приёмов пищи (1–2 в ряд, 3–4 сеткой), экраны по очереди (item.duration на экран); проп day/page — превью редактора
+    TodaySlide.vue «Сегодня»: дата крупно + до 3 карточек праздников (значок группы, название, пояснение); один экран на item.duration; проп list — превью
     BirthdaysSlide.vue именинники: заголовок, дата, карточки имён (класс акцентом, «в выходные»), учителя отдельной строкой; экраны по очереди; проп people — превью. Player ждёт todayReady на старте
     CountdownSlide.vue  обратный отсчёт (число + слово через plural; < суток — «Уже сегодня!» / «Осталось 5 ч 20 мин»); состояние — countdownState в rules.js
     NewsSlide.vue  новость на SlideStage: фото слева + стеклянная панель; размер шрифта по длине текста
@@ -165,7 +167,7 @@ src/
                    компактные строки (сводка, вкл, ⚙ ⚠ ✕). ⚙ → SlideSettings.vue: время, вид, шаблон, «Когда», копия,
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     ShowCalendar.vue «Календарь показов» (кнопка под «Настройки экрана»): неделя Пн–Вс × слайды, ячейки из `dayShows(when, date)` (rules.js, общая часть с ruleState — `dayRuleState`); только просмотр (`data-ro-allow`), название → SlideSettings
-    MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; BirthdaysEditor.vue — окно слайда именинников, BirthdaysModal.vue — окно списка (кнопка и в левой колонке PlaylistEditor); DeckEditor.vue — раздел «Колоды»
+    MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; BirthdaysEditor.vue — окно слайда именинников, TodayEditor.vue — окно слайда «Сегодня» (группы галочками, свои даты «ДД.ММ[.ГГГГ]», превью), BirthdaysModal.vue — окно списка (кнопка и в левой колонке PlaylistEditor); DeckEditor.vue — раздел «Колоды»
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
     NowOnScreen.vue + screens.js — «Сейчас на экране» (клик по блоку в PlaylistEditor открывает `/`, при пустом списке — кнопка «Открыть экран ↗»; `data-ro-allow` пропускает это через readonly-перехват) («Убрать из списка» у экрана без связи), silentList → жёлтая плашка в шапке AdminApp (логика — src/screenAlerts.js: >5 мин без связи, учебное время `inSchoolHours` из bells.js, был на связи сегодня/в прошлый учебный день); MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
@@ -206,6 +208,7 @@ tools/             pack.mjs, kiosk.ps1, autostart.ps1, screenshot.mjs, smoke.mjs
     { id, type: 'menu',     on, title ≤40, theme, duration /* с на экран */, twoWeeks,
       days: { '1'…'6' /* Пн–Сб */, при twoWeeks ещё '8'…'13' /* 2-я неделя */: [≤4 × { name ≤30, time ≤20, lines ≤2000 /* «блюдо — выход — цена» */ }] } },  // MENU_DAY_KEYS в catalog.js
     { id, type: 'birthdays', on, title ≤60, full /* «Имя Фамилия» */, theme, anim, duration /* с на экран имён */ },  // список — birthdays.json
+    { id, type: 'today',    on, groups: ['ru'|'rb'|'world'|'school'], extra: [≤100 × { d: 'ММ-ДД'|'ГГГГ-ММ-ДД', title ≤80, note ≤160 }] /* свои даты, нужна группа school */, theme, anim, duration },  // праздники — src/holidays.js; нет дат сегодня — слайд пропускается
     { id, type: 'deck',     on, deck, mode: 'next'|'daily' },   // длительность из колоды
     { id, type: 'winners',  on, label, title, date, media?, fit, theme, anim, duration /* с на экран */, groups: [ ≤20
       { name, places: [[{ name, cls }] ×1..3 /* 1, 2, 3 место */], others: 'строки «8А ФИО»' } ] },  // cleanGroup
@@ -335,5 +338,6 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.11.0 — слайд «Меню столовой» (`menu`): меню по дням Пн–Сб, «две недели», после последнего звонка — завтра, экраны по очереди; MenuSlide/MenuEditor, src/menu.js + тест.
 - v0.11.1 — значок «Меню столовой» в меню «Добавить слайд» (класс `menu` совпадал с классом выпадающего меню).
 - v0.11.2 — слайд «Именинники» (`birthdays`): список data/birthdays.json (окно, Excel, поиск), /api/birthdays/today для экрана, выходные в понедельник, 29.02; src/birthdays.js + тест.
+- v0.11.3 — слайд «Сегодня» (`today`): праздники и памятные даты дня из src/holidays.js + свои даты (ММ-ДД или на конкретный год), TodaySlide/TodayEditor, тест tests/holidays.test.js.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

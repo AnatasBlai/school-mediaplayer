@@ -20,6 +20,8 @@ import WinnersSlide from './WinnersSlide.vue'
 import CountdownSlide from './CountdownSlide.vue'
 import MenuSlide from './MenuSlide.vue'
 import BirthdaysSlide from './BirthdaysSlide.vue'
+import TodaySlide from './TodaySlide.vue'
+import { holidaysFor } from '../holidays.js'
 import { todayBirthdays, todayReady } from '../birthdaysStore.js'
 import DeckSlide from './DeckSlide.vue'
 import { ruleState, isBlanked, countdownState, screenAllowed } from '../rules.js'
@@ -53,6 +55,7 @@ function playable(it) {
   if (it.type === 'countdown') return !!it.date && !countdownState(it, now.value).over
   if (it.type === 'menu') return !!menuDay(it, now.value, afterLessons(now.value))
   if (it.type === 'birthdays') return todayBirthdays(it.full).length > 0
+  if (it.type === 'today') return holidaysFor(it, now.value).length > 0
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -237,6 +240,13 @@ onBeforeUnmount(() => {
       />
       <BirthdaysSlide
         v-else-if="s.item.type === 'birthdays'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <TodaySlide
+        v-else-if="s.item.type === 'today'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

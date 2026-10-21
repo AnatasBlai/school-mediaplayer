@@ -17,6 +17,7 @@ const EDIT_TEXT = {
   winners: 'Изменить победителей: места, призёры, фото, цвет',
   countdown: 'Изменить отсчёт: событие, дата, цвет',
   menu: 'Изменить меню: дни недели, блюда, цвет',
+  today: 'Изменить слайд: группы дат, свои даты, цвет',
   birthdays: 'Изменить слайд: заголовок, вид имён, цвет; список именинников',
 }
 const file = computed(() => (it.value.media ? mediaById(it.value.media) : null))
@@ -118,6 +119,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <span v-else-if="it.type === 'countdown'">⏳</span>
           <span v-else-if="it.type === 'menu'">🍽</span>
           <span v-else-if="it.type === 'birthdays'">🎂</span>
+          <span v-else-if="it.type === 'today'">📅</span>
           <span v-else-if="it.type === 'deck'">?!</span>
         </div>
         <div class="ttl">
@@ -321,6 +323,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 }
 .thumb.winners {
   background: linear-gradient(135deg, #e0b030, #7a4a0c);
+}
+.thumb.today {
+  background: linear-gradient(135deg, #e0a030, #8a3a0c);
+  font-size: 22px;
 }
 .thumb.birthdays {
   background: linear-gradient(135deg, #e04a8a, #6a0c3a);

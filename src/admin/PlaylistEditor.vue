@@ -31,6 +31,8 @@ import CountdownEditor from './CountdownEditor.vue'
 import MenuEditor from './MenuEditor.vue'
 import BirthdaysEditor from './BirthdaysEditor.vue'
 import BirthdaysModal from './BirthdaysModal.vue'
+import TodayEditor from './TodayEditor.vue'
+import { holidaysFor } from '../holidays.js'
 import { todayBirthdays } from '../birthdaysStore.js'
 import { birthdayScreens } from '../birthdays.js'
 import AddSlideMenu from './AddSlideMenu.vue'
@@ -108,9 +110,14 @@ function birthdaysToday(it) {
   const n = todayBirthdays(it.full).length
   return n ? `сегодня ${n} ${plural(n, 'именинник', 'именинника', 'именинников')}` : 'сегодня именинников нет — слайд пропускается'
 }
+/** Что сегодня на слайде «Сегодня». */
+function todayInfo(it) {
+  const h = holidaysFor(it, now.value)
+  return h.length ? 'сегодня: ' + h.map((x) => x.title).join('; ') : 'сегодня дат нет — слайд пропускается'
+}
 /** Текст новости / подпись отсчёта — хвостом сводки. */
 const snippetOf = (it) =>
-  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'today' ? todayInfo(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const calOpen = ref(false) // календарь показов
@@ -141,6 +148,7 @@ function settingsEdit() {
   if (it?.type === 'countdown') cdEdit.value = it
   if (it?.type === 'menu') menuEdit.value = it
   if (it?.type === 'birthdays') bdEdit.value = it
+  if (it?.type === 'today') todayEdit.value = it
 }
 
 function remove(i) {
@@ -155,6 +163,7 @@ function copySlide(i) {
   if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
   if (copy.type === 'menu') menuEdit.value = playlist.items[i + 1]
   if (copy.type === 'birthdays') bdEdit.value = playlist.items[i + 1]
+  if (copy.type === 'today') todayEdit.value = playlist.items[i + 1]
 }
 function settingsCopy() {
   const i = items.value.indexOf(setItem.value)
@@ -210,6 +219,10 @@ function onAdd(type, deck) {
     playlist.items.push(makeSlide('birthdays'))
     bdEdit.value = playlist.items[playlist.items.length - 1]
   }
+  else if (type === 'today') {
+    playlist.items.push(makeSlide('today'))
+    todayEdit.value = playlist.items[playlist.items.length - 1]
+  }
   else if (type === 'deck') playlist.items.push(makeSlide('deck', deck))
   else playlist.items.push(makeSlide(type))
 }
@@ -224,6 +237,7 @@ function onTemplate(t) {
   if (it.type === 'countdown') cdEdit.value = added
   if (it.type === 'menu') menuEdit.value = added
   if (it.type === 'birthdays') bdEdit.value = added
+  if (it.type === 'today') todayEdit.value = added
 }
 function renameTemplate(t) {
   const name = prompt('Новое название шаблона:', t.name)
@@ -283,6 +297,7 @@ function closeCountdown() {
 const menuEdit = ref(null)
 // именинники: окно слайда и окно списка (список один на всё табло)
 const bdEdit = ref(null)
+const todayEdit = ref(null)
 const bdListOpen = ref(false)
 function addMenu() {
   playlist.items.push(makeSlide('menu'))
@@ -417,6 +432,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'countdown'">⏳</span>
             <span v-else-if="it.type === 'menu'">🍽</span>
             <span v-else-if="it.type === 'birthdays'">🎂</span>
+            <span v-else-if="it.type === 'today'">📅</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
             <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -467,6 +483,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <WinnersEditor v-if="winEdit" :item="winEdit" @close="closeWinners" />
     <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
     <MenuEditor v-if="menuEdit" :item="menuEdit" @close="closeMenu" />
+    <TodayEditor v-if="todayEdit" :item="todayEdit" @close="todayEdit = null" />
     <BirthdaysEditor v-if="bdEdit" :item="bdEdit" @close="bdEdit = null" />
     <BirthdaysModal v-if="bdListOpen" @close="bdListOpen = false" />
 
@@ -759,6 +776,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
   font-size: 15px;
+}
+.thumb.today {
+  background: linear-gradient(135deg, #e0a030, #8a3a0c);
+  font-size: 22px;
 }
 .thumb.birthdays {
   background: linear-gradient(135deg, #e04a8a, #6a0c3a);

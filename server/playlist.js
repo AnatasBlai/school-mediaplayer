@@ -10,6 +10,7 @@ import { broadcast } from './events.js'
 import { baseConflict, nextUpdated } from './conflict.js'
 import { logChange } from './journal.js'
 import { THEME_KEYS as THEMES, SLIDE_TYPES as TYPES, LAYOUTS, NEWS_ANIM_KEYS as NEWS_ANIMS, GRADES, MENU_DAY_KEYS, MENU_DAY_KEYS_2 } from '../src/catalog.js'
+import { HOLIDAY_GROUP_KEYS, validHolidayDate } from '../src/holidays.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'data', 'playlist.json')
@@ -160,6 +161,16 @@ export function cleanItem(x) {
     it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
     it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
     it.duration = secs(x.duration, 10) // секунд на один экран
+  } else if (x.type === 'today') {
+    // праздники дня: встроенный список — src/holidays.js; здесь выбранные группы и свои даты
+    it.groups = HOLIDAY_GROUP_KEYS.filter((g) => Array.isArray(x.groups) && x.groups.includes(g))
+    it.extra = (Array.isArray(x.extra) ? x.extra : [])
+      .filter((e) => validHolidayDate(e?.d) && str(e.title, 80))
+      .slice(0, 100)
+      .map((e) => ({ d: e.d, title: str(e.title, 80), note: str(e.note, 160) }))
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
+    it.duration = secs(x.duration, 10)
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
     if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null

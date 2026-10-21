@@ -48,7 +48,7 @@ function view(s) {
     tab,
     urgent,
     thumb: file ? thumbUrl(file) : '',
-    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'winners' && !file ? '🏆' : sl.type === 'countdown' ? '⏳' : sl.type === 'menu' ? '🍽' : sl.type === 'birthdays' ? '🎂' : '',
+    label: board ? (sl.tab === 'changes' ? 'Изм.' : sl.tab || '5–11') : sl.type === 'deck' ? '?!' : sl.type === 'blank' ? '☾' : sl.type === 'news' && !file ? 'Нов.' : sl.type === 'winners' && !file ? '🏆' : sl.type === 'countdown' ? '⏳' : sl.type === 'menu' ? '🍽' : sl.type === 'birthdays' ? '🎂' : sl.type === 'today' ? '📅' : '',
     cls: sl.type,
     num: item ? playlist.items.indexOf(item) + 1 : 0,
   }
@@ -171,6 +171,9 @@ function view(s) {
 }
 .thumb.winners {
   background: linear-gradient(135deg, #e0b030, #7a4a0c);
+}
+.thumb.today {
+  background: linear-gradient(135deg, #e0a030, #8a3a0c);
 }
 .thumb.birthdays {
   background: linear-gradient(135deg, #e04a8a, #6a0c3a);
