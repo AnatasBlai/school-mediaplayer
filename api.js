@@ -10,6 +10,7 @@
 //   /api/weather — погода из Open-Meteo, открыт (server/weather.js)
 //   /api/status  — состояние системы: диск, копии, версия (server/status.js)
 //   /api/journal* — журнал правок и откат (server/journal.js)
+//   /api/access  — с каких компьютеров открывается редактор (server/access.js; проверка адреса — в handleApi)
 //   /api/auth*   — входы и права; запись без входа — 401, без права на раздел — 403 (server/auth.js)
 import fs from 'node:fs'
 import path from 'node:path'
@@ -24,6 +25,7 @@ import { handleBackup } from './server/backup.js'
 import { handleStatus } from './server/status.js'
 import { handleWeather } from './server/weather.js'
 import { isAllowed, handleAuth } from './server/auth.js'
+import { apiBlocked, handleAccess, guardAdminPage, DENIED } from './server/access.js'
 import { baseConflict, nextUpdated } from './server/conflict.js'
 import { handleJournal, logChange } from './server/journal.js'
 
@@ -105,6 +107,13 @@ function handleData(req, res) {
 export function handleApi(req, res) {
   const url = (req.url || '').split('?')[0]
   if (url.startsWith('/api/')) {
+    // адрес компьютера проверяем раньше входа и прав (server/access.js)
+    if (apiBlocked(req)) {
+      res.statusCode = 403
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify({ ok: false, error: DENIED }))
+      return true
+    }
     const a = isAllowed(req)
     if (!a.ok) {
       res.statusCode = a.code
@@ -113,7 +122,7 @@ export function handleApi(req, res) {
       return true
     }
   }
-  if (handleAuth(req, res)) return true
+  if (handleAuth(req, res) || handleAccess(req, res)) return true
   if (url === '/api/events') {
     openEvents(req, res)
     return true
@@ -139,6 +148,7 @@ export function handleApi(req, res) {
 
 export function apiPlugin() {
   const mw = (req, res, next) => {
+    if (guardAdminPage(req, res)) return
     if (!handleApi(req, res)) next()
   }
   return {

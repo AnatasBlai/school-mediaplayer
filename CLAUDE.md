@@ -13,7 +13,7 @@
 4. Если в задаче что-то неясно или противоречит этому файлу — спроси владельца, а не угадывай.
 5. Новое поле данных → сразу в три места: клиент (создание/нормализация), **сервер (`clean…` в server/*.js — иначе
    сервер молча выбросит поле)**, раздел «Данные» этого файла.
-6. **Все записи — только после входа и по правам**: новый POST/PUT/PATCH/DELETE в API по умолчанию требует «admin»;
+6. **Все записи — только после входа, по правам и с разрешённого компьютера** (адрес проверяет `apiBlocked` из server/access.js в api.js раньше `isAllowed`; открытым экранам — `SCREEN_WRITES` там же): новый POST/PUT/PATCH/DELETE в API по умолчанию требует «admin»;
    нужное право (schedule/playlist/decks/media) впиши в таблицу `WRITE_RIGHTS` в server/auth.js; открытым без входа делай
    только отчёт/действие экрана (`OPEN_WRITES`). Нет права → 403, нет входа → 401.
 7. **Любая новая запись данных в API → `logChange(req, area, before, after)`** (или `logEvent` для служебного) из
@@ -107,6 +107,7 @@ server/
                    без права → 403, GET открыт, кроме копий, /api/users, журнала и /api/birthdays; таблица WRITE_RIGHTS; нет пользователей — всё открыто),
                    /api/auth* и /api/users* (только admin; первого admin создаёт открытый POST), scrypt + сессии 30 дней (cookie
                    tablo_session), лимит 5 попыток по IP и по логину; migrateOldPassword() вызывает server.js (не импорт!)
+  access.js        доступ к редактору по адресу компьютера: data/access.json, parseNet/ipInList/cleanAccess (свой разбор IPv4+CIDR), editorAllowed (127.0.0.1/::1 всегда можно), apiBlocked (запись и /api/auth* → 403 `DENIED`), guardAdminPage (/admin → заглушка; вызывается в server.js и Vite-плагине api.js), GET/PUT /api/access (admin; включить без своего адреса нельзя)
   journal.js       журнал правок: logChange(req, area, before, after, opts) / logEvent / resetGroups; группа = один человек + один раздел,
                    пауза < 2 мин; перед группой файл «до» → data/history/<area>/<мс>.json; GET /api/journal?area&user&day&before&since&limit,
                    POST /api/journal/<id>/revert (право на раздел записи — `can` из auth.js; в WRITE_RIGHTS это 'login'); startJournal() — чистка
@@ -163,6 +164,7 @@ src/
     auth.js + AuthModals.vue + UsersModal.vue  вход по логину: window.fetch оборачивается (401 — окно входа и повтор, 403 —
                    плашка «Нет прав»), needLogin() для XHR; `can(право)`; раздел без права — `readonly` в AdminApp (плашка + capture-
                    перехват кликов/ввода в <main>); окно «Пользователи» (admin); кнопки в шапке AdminApp
+    AccessModal.vue окно «Доступ к редактору» (меню ⚙, admin): переключатель, список адресов/подсетей с подписью, «Добавить этот компьютер»
     JournalModal.vue окно «Журнал правок» (кнопка «Журнал» в шапке): фильтры раздел/человек/день, «Подробнее», откат с подтверждением
     AdminApp.vue   разделы schedule | playlist | decks | media (раздел в hash), статус сохранения; шапка «12 Кадр / медиаплеер»,
                    вид кнопок разделов text|icons|both (localStorage `tablo-nav-view`, по умолчанию both), имя, HeaderMenu.vue — меню ⚙
@@ -240,7 +242,7 @@ from > to — через полночь. Нет файла → плейлист 
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
 category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
 **users.json** `{ users: [{ id, name, login, salt, hash, rights: [schedule|playlist|decks|media|admin], disabled }] }` (нет файла — входов нет, всё открыто)
-и **sessions.json** `{ токен: { exp, user } }`; старый **auth.json** при старте → пользователь admin, файл → `auth.json.old`; все три не в снимках копий
+и **sessions.json** `{ токен: { exp, user } }`; старый **auth.json** при старте → пользователь admin, файл → `auth.json.old`; все три и **access.json** `{ on, allow: [{ net: '192.168.1.0/24'|'192.168.1.25', note ≤60 }] ≤50 }` (нет файла — ограничения нет) не в снимках копий
 (`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **journal/<ГГГГ-ММ>.json** `{ items: [{ id, at, until, user, name, ip, area: schedule|playlist|decks|birthdays|media|system, summary: [строки], version? /* файл в history/ */, kind?: 'revert', revertOf? }] }`
 и **history/<schedule|playlist|decks|birthdays>/<мс>.json** (60 дней, но ≥ 50 версий на файл) — не в снимках копий и не в архивах. **backup.json** — настройки копий `{ dir, period: off|day|week|month, lastAt, last }` (в снимки не попадает).
 
@@ -352,5 +354,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 - v0.11.4 — слайд «Кружки и секции» (`clubs`): режимы «Сегодня» (ИДЁТ, прошедшие тусклые, пропуск после последнего занятия) и «Вся неделя», вставка из Excel; src/clubs.js + тест.
 - v0.11.5 — погода: server/weather.js (Open-Meteo, data/weather.json), строка в боковых панелях, слайд `weather`, настройки в SettingsModal, строка в «Состоянии»; src/weather.js + тест. Проверено на копии с реальным интернетом и с подменой ответов.
 - v0.11.6 — переключатель «Погода на табло» в меню ⚙ шапки редактора.
+
+Сделано в этапе 12:
+- v0.12.0 — редактор только с компьютеров учителей (server/access.js, AccessModal.vue, тест tests/access.test.js): адреса и подсети, защита «не запереть себя», заглушка на /admin, 403 на запись и /api/auth*.
 
 Этап 13 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

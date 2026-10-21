@@ -93,6 +93,9 @@ onBeforeUnmount(() => {
         <button v-if="can('admin')" class="item" role="menuitem" @click="pick(() => (auth.usersOpen = true))">
           <span class="ico" v-html="icon('users')"></span>Пользователи
         </button>
+        <button v-if="can('admin')" class="item" role="menuitem" @click="pick(() => (auth.accessOpen = true))">
+          <span class="ico" v-html="icon('lock')"></span>Доступ к редактору
+        </button>
         <button class="item" role="menuitem" @click="pick(() => (auth.passOpen = true))">
           <span class="ico" v-html="icon('key')"></span>Мой пароль
         </button>

@@ -11,6 +11,7 @@ export const auth = reactive({
   loginOpen: false, // окно «Вход в редактор» (или «Создать администратора», пока пользователей нет)
   passOpen: false, // окно «Мой пароль»
   usersOpen: false, // окно «Пользователи»
+  accessOpen: false, // окно «Доступ к редактору»
   setupOpen: false, // создание первого администратора
   denied: '', // сообщение о 403
 })
@@ -117,3 +118,7 @@ export const listUsers = async () => (await call('GET', '/api/users')).users
 export const addUser = (u) => call('POST', '/api/users', u)
 export const saveUser = (id, patch) => call('PUT', '/api/users/' + id, patch)
 export const removeUser = (id) => call('DELETE', '/api/users/' + id)
+
+// ---------- доступ к редактору по адресу компьютера (только администратор) ----------
+export const getAccess = () => call('GET', '/api/access') // { on, allow: [{ net, note }], me }
+export const saveAccess = (a) => call('PUT', '/api/access', a)

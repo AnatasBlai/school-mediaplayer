@@ -57,7 +57,7 @@ try {
   fs.mkdirSync(path.join(copy, 'src'))
   for (const f of ['deckText.js', 'catalog.js', 'dataDiff.js', 'birthdays.js', 'holidays.js', 'clubs.js', 'weather.js', 'scheduleImport.js']) fs.copyFileSync(path.join(ROOT, 'src', f), path.join(copy, 'src', f))
   if (withData && fs.existsSync(path.join(ROOT, 'data'))) {
-    const secret = ['auth.json', 'sessions.json', 'users.json', 'media.json', 'backup.json']
+    const secret = ['auth.json', 'sessions.json', 'users.json', 'media.json', 'backup.json', 'access.json']
     copyDir(path.join(ROOT, 'data'), path.join(copy, 'data'), (n) => secret.includes(n))
   }
 

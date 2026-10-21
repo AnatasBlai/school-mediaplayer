@@ -16,6 +16,7 @@ import { silentList, screenLabel } from './screens.js'
 import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
 import UsersModal from './UsersModal.vue'
+import AccessModal from './AccessModal.vue'
 import JournalModal from './JournalModal.vue'
 import HeaderMenu from './HeaderMenu.vue'
 import { icon } from './icons.js'
@@ -153,6 +154,7 @@ const status = computed(() => {
     <SystemStatus v-if="statusOpen" @close="statusOpen = false" />
     <JournalModal v-if="journalOpen" @close="journalOpen = false" />
     <UsersModal v-if="auth.usersOpen" @close="auth.usersOpen = false" />
+    <AccessModal v-if="auth.accessOpen" @close="auth.accessOpen = false" />
     <AuthModals />
   </div>
 </template>
