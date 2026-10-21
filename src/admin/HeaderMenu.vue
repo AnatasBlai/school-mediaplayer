@@ -1,9 +1,10 @@
 <script setup>
 // Меню ⚙ в шапке редактора: вид разделов, журнал, состояние, пользователи, мой пароль, выход.
 // Окна открывает AdminApp (события journal/status) и auth.js (флаги usersOpen/passOpen/setupOpen).
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { auth, can, logout } from './auth.js'
 import { icon } from './icons.js'
+import { state } from '../store.js'
 
 const props = defineProps({ navView: String, sysLevel: String })
 const emit = defineEmits(['update:navView', 'journal', 'status'])
@@ -16,6 +17,9 @@ const VIEWS = [
 const SYS_TITLE = { ok: 'Всё хорошо', warn: 'Есть предупреждения', bad: 'Есть ошибки' }
 
 const open = ref(false)
+// погода на табло: тот же переключатель, что в настройках у календаря (settings.weather.on); меню не закрываем
+const weatherOn = computed(() => !!state.settings.weather?.on)
+const toggleWeather = () => (state.settings.weather = { ...state.settings.weather, on: !weatherOn.value })
 const root = ref(null)
 // пункт выбран → меню закрывается, затем действие
 function pick(fn) {
@@ -66,6 +70,11 @@ onBeforeUnmount(() => {
           {{ v.title }}
         </button>
       </div>
+      <div class="sep"></div>
+      <button class="item" role="menuitemswitch" :aria-checked="weatherOn" :disabled="!can('schedule')" title="Показывать погоду на табло (нужен интернет на ПК с сервером)" @click="toggleWeather">
+        <span class="ico emo">🌤</span>Погода на табло
+        <span class="sw" :class="{ on: weatherOn }">{{ weatherOn ? 'Вкл' : 'Выкл' }}</span>
+      </button>
       <div class="sep"></div>
       <button v-if="!auth.required || auth.user" class="item" role="menuitem" @click="pick(() => emit('journal'))">
         <span class="ico" v-html="icon('journal')"></span>Журнал правок
@@ -199,6 +208,26 @@ onBeforeUnmount(() => {
 .view:hover,
 .item:hover {
   background: #3b404a;
+}
+.item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.emo {
+  font-size: 16px;
+  line-height: 1;
+}
+.sw {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: #3b404a;
+  color: #aeb4bf;
+  font-size: 13px;
+}
+.sw.on {
+  background: #2f9d57;
+  color: #fff;
 }
 .sep {
   height: 1px;
