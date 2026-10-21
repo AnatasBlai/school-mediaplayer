@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { auth, can, logout } from './auth.js'
 import { icon } from './icons.js'
 import { state } from '../store.js'
+import { transfer } from './transferApi.js'
 
 const props = defineProps({ navView: String, sysLevel: String })
 const emit = defineEmits(['update:navView', 'journal', 'status'])
@@ -76,6 +77,10 @@ onBeforeUnmount(() => {
         <span class="sw" :class="{ on: weatherOn }">{{ weatherOn ? 'Вкл' : 'Выкл' }}</span>
       </button>
       <div class="sep"></div>
+      <template v-if="!auth.required || auth.user">
+        <button class="item" role="menuitem" @click="pick(() => (transfer.exportOpen = true))"><span class="ico emo">⬇</span>Сохранить в файл</button>
+        <button class="item" role="menuitem" @click="pick(() => (transfer.importOpen = true))"><span class="ico emo">⬆</span>Загрузить из файла</button>
+      </template>
       <button v-if="!auth.required || auth.user" class="item" role="menuitem" @click="pick(() => emit('journal'))">
         <span class="ico" v-html="icon('journal')"></span>Журнал правок
       </button>

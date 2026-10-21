@@ -37,6 +37,7 @@ const FILES = [
   'src/weather.js', // его импортирует server/weather.js
   'src/birthdays.js', // его импортирует server/birthdays.js
   'src/scheduleImport.js', // его импортирует src/birthdays.js
+  'src/transfer.js', // его импортирует server/transfer.js
 ]
 const DIRS = ['server', 'dist']
 // kiosk-settings.txt — настройки конкретного ПК: при обновлении не затираем

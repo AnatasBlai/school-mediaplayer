@@ -17,6 +17,9 @@ import { plural } from '../bells.js'
 import AuthModals from './AuthModals.vue'
 import UsersModal from './UsersModal.vue'
 import AccessModal from './AccessModal.vue'
+import TransferExport from './TransferExport.vue'
+import TransferImport from './TransferImport.vue'
+import { transfer } from './transferApi.js'
 import JournalModal from './JournalModal.vue'
 import HeaderMenu from './HeaderMenu.vue'
 import { icon } from './icons.js'
@@ -155,6 +158,8 @@ const status = computed(() => {
     <JournalModal v-if="journalOpen" @close="journalOpen = false" />
     <UsersModal v-if="auth.usersOpen" @close="auth.usersOpen = false" />
     <AccessModal v-if="auth.accessOpen" @close="auth.accessOpen = false" />
+    <TransferExport v-if="transfer.exportOpen" @close="transfer.exportOpen = false" />
+    <TransferImport v-if="transfer.importOpen" @close="transfer.importOpen = false" />
     <AuthModals />
   </div>
 </template>

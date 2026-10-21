@@ -261,26 +261,31 @@ function defaultPlaylist() {
   }
 }
 
+/** Весь документ плейлиста из «сырых» данных: каждое поле проходит свою очистку. updatedAt — уже готовый. */
+export function cleanPlaylist(d, updatedAt) {
+  const items = (Array.isArray(d?.items) ? d.items : []).map(cleanItem).filter(Boolean)
+  return {
+    version: 1,
+    updatedAt,
+    layout: cleanLayout(d?.layout),
+    blank: cleanBlank(d?.blank),
+    ticker: cleanTicker(d?.ticker),
+    urgent: cleanUrgent(d?.urgent, items),
+    templates: cleanTemplates(d?.templates),
+    items,
+  }
+}
+
 export function readPlaylist() {
   try {
     const d = JSON.parse(fs.readFileSync(FILE, 'utf8'))
-    const items = (d.items || []).map(cleanItem).filter(Boolean)
-    return {
-      version: 1,
-      updatedAt: Number(d.updatedAt) || 0,
-      layout: cleanLayout(d.layout),
-      blank: cleanBlank(d.blank),
-      ticker: cleanTicker(d.ticker),
-      urgent: cleanUrgent(d.urgent, items),
-      templates: cleanTemplates(d.templates),
-      items,
-    }
+    return cleanPlaylist(d, Number(d.updatedAt) || 0)
   } catch {
     return defaultPlaylist()
   }
 }
 
-function writePlaylist(p) {
+export function writePlaylist(p) {
   fs.mkdirSync(path.dirname(FILE), { recursive: true })
   const tmp = FILE + '.tmp'
   fs.writeFileSync(tmp, JSON.stringify(p, null, 2), 'utf8')
@@ -343,17 +348,7 @@ export function handlePlaylist(req, res) {
     if (!Array.isArray(d.items)) return json(res, 400, { ok: false, error: 'Нет списка слайдов' })
     const cur = readPlaylist()
     if (baseConflict(req, cur.updatedAt)) return json(res, 409, { ok: false, conflict: true, current: cur })
-    const items = d.items.map(cleanItem).filter(Boolean)
-    const p = {
-      version: 1,
-      updatedAt: nextUpdated(d.updatedAt, cur.updatedAt),
-      layout: cleanLayout(d.layout),
-      blank: cleanBlank(d.blank),
-      ticker: cleanTicker(d.ticker),
-      urgent: cleanUrgent(d.urgent, items),
-      templates: cleanTemplates(d.templates),
-      items,
-    }
+    const p = cleanPlaylist(d, nextUpdated(d.updatedAt, cur.updatedAt))
     writePlaylist(p)
     logChange(req, 'playlist', cur, p)
     json(res, 200, { ok: true, updatedAt: p.updatedAt })

@@ -79,6 +79,12 @@ function writeJson(file, data) {
   fs.renameSync(tmp, file)
 }
 
+/** Записывает колоды целиком и сообщает экранам (для переноса файлом). */
+export function saveDecks(p) {
+  writeJson(FILE, p)
+  broadcast('decks', { updatedAt: p.updatedAt })
+}
+
 // ---------- счётчики показов ----------
 let counters = null
 function take(id) {

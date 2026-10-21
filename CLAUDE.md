@@ -62,7 +62,7 @@
 - Одноразовые скрипты и скриншоты — в scratchpad, не в проект. Скрипт вне проекта подключает playwright так:
   `createRequire('<путь проекта>/package.json')('playwright')`.
 - **Изолированная копия сервера** (обязательно для всего, что пишет данные): скопировать в scratchpad `api.js server.js
-  package.json server/ dist/ data/ src/deckText.js src/catalog.js src/dataDiff.js src/birthdays.js src/holidays.js src/clubs.js src/scheduleImport.js` и картинки из `media/` (без видео), запустить там
+  package.json server/ dist/ data/ src/deckText.js src/catalog.js src/dataDiff.js src/birthdays.js src/holidays.js src/clubs.js src/scheduleImport.js src/transfer.js` и картинки из `media/` (без видео), запустить там
   `PORT=8090 node server.js`. Так тест не трогает рабочие данные и не виден живым экранам школы.
   Или подменять ответы API в браузере: `page.route('**/api/playlist', r => r.fulfill({ json }))`.
   POST `/api/screens` в тестах тоже подменяй — иначе тестовый «экран» появится в «Сейчас на экране».
@@ -100,6 +100,8 @@ server/
                    (общий счётчик, data/deck-state.json); cleanDeck/cleanCard; removeMediaFromDecks(id)
   birthdays.js     именинники: GET /api/birthdays (только после входа — `rightFor` в auth.js), PUT (право playlist), GET /today[?full=1]
                    (открыт: уже отформатированные { name, cls, weekend } без дат, по часам сервера; учебная суббота — из schedule.json); cleanBirthday
+  transfer.js      перенос файлом (zip): GET /api/transfer/estimate|export, POST /import (тело — файл → data/transfer/<токен>.zip, разбор → предпросмотр), GET /import/<токен> (ход), POST /import/<токен>/apply { playlist, playlistMode: replace|add, decks, schedule }, DELETE; права на части — `can` внутри (WRITE_RIGHTS — 'login'); всё применяется целиком или никак (файлы → media.json → данные), в журнал logChange с подписью «Загружено из файла»; sweepTransfer/startTransfer (из server.js) чистят брошенное (>1 ч)
+  zip.js           zip без зависимостей: ZipWriter (метод 0, UTF-8, data descriptor, потоком, <4 ГБ), openZip (методы 0 и 8, CRC, небезопасные имена → ZipError), crc32
   media.js         медиатека: GET/POST /api/media (сырое тело потоком → .part → rename), PATCH/DELETE, /thumb, Range
   backup.js        резервные копии: GET/PUT /api/backup, /drives, /check, /run, /restore { name, files? } (частичный возврат; зеркало media/ копируется, только если среди files media.json),
                    GET /snapshot/<имя>/<файл>.json и /mirror (после входа — правило в auth.js `isAllowed`; имя и файл по regex, иначе 400); расписание раз в 10 мин
@@ -119,6 +121,7 @@ src/
   store.js         расписание: reactive state, debounce 300 мс → PUT, SSE; onServerEvent(type, fn) → отписка;
                    getLessons/setLessonField, getChanges/setChangeField, changesActive(now) / hasChanges(now) (учитывают
                    changesDate; экран читает изменения только через них), clearChanges (сбрасывает и дату), maxLessonOfDay, isBreak(now) (kind 'break' у bellStatus); saveStatus, connected
+  transfer.js      перенос файлом без Vue (импортирует сервер): mediaRefs, remapMedia(data, map), mergePlaylistAdd, mergeDecks, cmpVersion, transferName
   merge.js         merge3(base, mine, theirs) → { merged, conflicts }, describeConflicts — без Vue; saver.js — сохранение с базой и 409 (syncNotice)
   playlist.js      стор плейлиста (как store.js) + медиатека (media, mediaById, mediaUrl, thumbUrl); makeSlide,
                    slideTitle, SLIDE_TITLES, LAYOUT_TITLES, hasLayout, layoutOf, usesOfMedia; startPlaylist()
@@ -176,6 +179,7 @@ src/
                    удаление (окно держит id слайда, не объект). < 1100 px — колонки стопкой
     ShowCalendar.vue «Календарь показов» (кнопка под «Настройки экрана»): неделя Пн–Вс × слайды, ячейки из `dayShows(when, date)` (rules.js, общая часть с ruleState — `dayRuleState`); только просмотр (`data-ro-allow`), название → SlideSettings
     MenuEditor.vue окно меню (вкладки дней, приёмы пищи, «Из Excel», «Скопировать день на…», превью дня); NewsEditor.vue окно новости с живым превью; WinnersEditor.vue — окно победителей (вкладки классов); CountdownEditor.vue — окно отсчёта; BirthdaysEditor.vue — окно слайда именинников, TodayEditor.vue — окно слайда «Сегодня» (группы галочками, свои даты «ДД.ММ[.ГГГГ]», превью), ClubsEditor.vue — окно кружков (режим, список с полем «Пн, Ср 15:00-15:45; Пт 14:00», «Вставить из Excel», превью), BirthdaysModal.vue — окно списка (кнопка и в левой колонке PlaylistEditor); DeckEditor.vue — раздел «Колоды»
+    TransferExport.vue / TransferImport.vue + transferApi.js — окна «Сохранить в файл» и «Загрузить из файла» (флаги `transfer.exportOpen/importOpen`, окна живут в AdminApp; кнопки — карточка «Перенос на другой компьютер» в PlaylistEditor и меню ⚙)
     MediaLibrary.vue медиатека (+ «Не используются», кнопка «Резервная копия» → BackupPanel.vue)
     SystemStatus.vue + systemStatus.js — окно «Состояние» (кнопка с цветной точкой в шапке, пересчёт раз в 5 мин): строки-проверки и уровень ok/warn/bad
     NowOnScreen.vue + screens.js — «Сейчас на экране» (клик по блоку в PlaylistEditor открывает `/`, при пустом списке — кнопка «Открыть экран ↗»; `data-ro-allow` пропускает это через readonly-перехват) («Убрать из списка» у экрана без связи), silentList → жёлтая плашка в шапке AdminApp (логика — src/screenAlerts.js: >5 мин без связи, учебное время `inSchoolHours` из bells.js, был на связи сегодня/в прошлый учебный день); MediaPicker.vue, ThemeSwatches.vue; mediaApi.js
@@ -240,7 +244,7 @@ from > to — через полночь. Нет файла → плейлист 
 (/today), в журнал — только числа (diffBirthdays), в архивы pack.mjs не входит (там белый список файлов data/); в резервные копии входит.
 **weather.json** `{ at /* последний удачный запрос */, tried, ok, error?, place, lat, lon, current: { temp, code, wind }, daily: [{ date, code, max, min }] }` — служебный, не в снимках копий (`isDataFile`) и не в архивах pack.mjs.
 **media.json** + папка `media/` — только через API медиатеки: `{ items: [{ id, file, type: 'image'|'video', name,
-category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — счётчики показов колод.
+category, size, w, h, duration?, thumb, addedAt, sha1? /* лениво, для переноса файлом; клиенту не нужен */ }] }`. **transfer/<токен>.zip** — временные загрузки переноса (служебная папка: не в снимках, не в архивах pack.mjs, вне «Объёма data» в «Состоянии»). **deck-state.json** — счётчики показов колод.
 **users.json** `{ users: [{ id, name, login, salt, hash, rights: [schedule|playlist|decks|media|admin], disabled }] }` (нет файла — входов нет, всё открыто)
 и **sessions.json** `{ токен: { exp, user } }`; старый **auth.json** при старте → пользователь admin, файл → `auth.json.old`; все три и **access.json** `{ on, allow: [{ net: '192.168.1.0/24'|'192.168.1.25', note ≤60 }] ≤50 }` (нет файла — ограничения нет) не в снимках копий
 (`isDataFile`) и не в архивах pack.mjs. **screens.json** `{ items: [{ id, name, ip, seen, w, h }] }` — запомненные экраны (там же не в снимках). **journal/<ГГГГ-ММ>.json** `{ items: [{ id, at, until, user, name, ip, area: schedule|playlist|decks|birthdays|media|system, summary: [строки], version? /* файл в history/ */, kind?: 'revert', revertOf? }] }`
@@ -358,5 +362,8 @@ category, size, w, h, duration?, thumb, addedAt }] }`. **deck-state.json** — �
 
 Сделано в этапе 12:
 - v0.12.0 — редактор только с компьютеров учителей (server/access.js, AccessModal.vue, тест tests/access.test.js): адреса и подсети, защита «не запереть себя», заглушка на /admin, 403 на запись и /api/auth*.
+
+Сделано в этапе 13:
+- v0.13.0 — перенос плейлиста одним zip-файлом («Сохранить в файл» / «Загрузить из файла»): server/transfer.js + zip.js, src/transfer.js, окна TransferExport/TransferImport; «Заменить целиком» / «Добавить новые слайды», колоды и расписание по галочкам, дедупликация файлов по SHA-1, новый id при занятом, откат из «Журнала правок»; тесты tests/zip.test.js, tests/transfer.test.js.
 
 Этап 14 — квесты: отложены (телефоны учеников не достают до сервера), не начинать без владельца.

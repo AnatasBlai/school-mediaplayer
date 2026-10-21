@@ -18,6 +18,9 @@ try {
 
 async function status() {
   const data = await folderSize(path.join(ROOT, 'data'))
+  const tmp = await folderSize(path.join(ROOT, 'data', 'transfer')) // временные файлы переноса — не данные школы
+  data.files -= tmp.files
+  data.bytes -= tmp.bytes
   const media = await folderSize(path.join(ROOT, 'media'))
   return {
     version,

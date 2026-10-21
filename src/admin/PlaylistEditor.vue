@@ -43,6 +43,7 @@ import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
 import SlideSettings from './SlideSettings.vue'
 import ShowCalendar from './ShowCalendar.vue'
+import { transfer } from './transferApi.js'
 import { deckById, avgCardSeconds, startDecks } from '../decks.js'
 
 startPlaylist()
@@ -399,6 +400,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <button class="a-btn cal-btn" data-ro-allow @click="bdListOpen = true">🎂 Именинники</button>
       </div>
 
+      <div class="card">
+        <div class="card-head"><b>Перенос на другой компьютер</b></div>
+        <div class="tr-hint">Плейлист и все фото и видео — одним файлом, например для работы из дома.</div>
+        <div class="tr-btns">
+          <button class="a-btn" data-ro-allow @click="transfer.exportOpen = true">⬇ Сохранить в файл</button>
+          <button class="a-btn" data-ro-allow @click="transfer.importOpen = true">⬆ Загрузить из файла</button>
+        </div>
+      </div>
+
       <!-- клик по блоку открывает экран в новой вкладке (кнопки внутри — свои действия) -->
       <div class="card now-card" data-ro-allow title="Открыть экран в новой вкладке" @click="openScreen">
         <div class="card-head"><b>Сейчас на экране</b><span class="open-hint">Открыть экран ↗</span></div>
@@ -640,6 +650,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   color: #c9a7ff;
 }
 .cal-btn {
+  margin-top: 6px;
+}
+.tr-hint {
+  color: #8b909a;
+  font-size: 12px;
+}
+.tr-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 6px;
 }
 .queue {

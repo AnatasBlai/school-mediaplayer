@@ -19,13 +19,13 @@ import { removeMediaFromDecks } from './decks.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 export const MEDIA_DIR = path.join(ROOT, 'media')
-const THUMBS_DIR = path.join(MEDIA_DIR, 'thumbs')
+export const THUMBS_DIR = path.join(MEDIA_DIR, 'thumbs')
 const LIST_FILE = path.join(ROOT, 'data', 'media.json')
 
 const MAX_FILE = 4 * 1024 ** 3 // 4 ГБ
 const MAX_THUMB = 2 * 1024 ** 2
-const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
-const VIDEO_EXT = ['.mp4', '.m4v', '.webm', '.mov']
+export const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+export const VIDEO_EXT = ['.mp4', '.m4v', '.webm', '.mov']
 
 // недокачанные файлы от прошлого запуска
 try {
@@ -36,7 +36,7 @@ try {
 
 // ---------- список ----------
 
-function readList() {
+export function readList() {
   try {
     const d = JSON.parse(fs.readFileSync(LIST_FILE, 'utf8'))
     return Array.isArray(d.items) ? d.items : []
@@ -45,7 +45,7 @@ function readList() {
   }
 }
 
-function writeList(items) {
+export function writeList(items) {
   fs.mkdirSync(path.dirname(LIST_FILE), { recursive: true })
   const tmp = LIST_FILE + '.tmp'
   fs.writeFileSync(tmp, JSON.stringify({ version: 1, items }, null, 2), 'utf8')
@@ -97,7 +97,7 @@ function readJsonBody(req) {
 }
 
 /** Пишет тело запроса в файл потоком; при обрыве или превышении лимита удаляет недописанное. */
-async function saveBody(req, dest, limit) {
+export async function saveBody(req, dest, limit) {
   const part = dest + '.part'
   let size = 0
   const counter = new Transform({
@@ -114,6 +114,35 @@ async function saveBody(req, dest, limit) {
     fs.rmSync(part, { force: true })
     throw e
   }
+}
+
+/** SHA-1 файла потоком. */
+export function hashFile(file) {
+  return new Promise((resolve, reject) => {
+    const h = crypto.createHash('sha1')
+    fs.createReadStream(file).on('data', (c) => h.update(c)).on('end', () => resolve(h.digest('hex'))).on('error', reject)
+  })
+}
+
+/** Дописывает `sha1` тем записям списка, у которых его нет (лениво, для переноса файлом); возвращает список. */
+export async function ensureSha1(items) {
+  let changed = false
+  for (const it of items) {
+    if (it.sha1) continue
+    try {
+      it.sha1 = await hashFile(path.join(MEDIA_DIR, it.file))
+      changed = true
+    } catch {
+      /* файла нет — хэша нет */
+    }
+  }
+  if (changed) {
+    // список перечитываем: пока считали, его могли изменить
+    const fresh = readList()
+    for (const f of fresh) f.sha1 = f.sha1 || items.find((x) => x.id === f.id)?.sha1 || undefined
+    writeList(fresh)
+  }
+  return items
 }
 
 // ---------- обработчики ----------

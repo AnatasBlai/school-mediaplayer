@@ -152,6 +152,7 @@ const WRITE_RIGHTS = [
   [/^\/api\/birthdays$/, 'playlist'], // список именинников — в разделе «Плейлист»
   [/^\/api\/media(\/|$)/, 'media'],
   [/^\/api\/journal\/[\w-]+\/revert$/, 'login'], // право на раздел записи проверяет journal.js
+  [/^\/api\/transfer\//, 'login'], // перенос файлом: права на плейлист / колоды / расписание / медиатеку проверяет transfer.js
 ]
 const OPEN_WRITES = [/^\/api\/auth(\/|$)/, /^\/api\/screens$/, /^\/api\/decks\/[^/]+\/take$/] // отчёт экрана, «взять карточку», вход (проверяют себя сами)
 function rightFor(method, url) {
@@ -159,6 +160,7 @@ function rightFor(method, url) {
     // содержимое снимков и пользователи — только администратору
     if (/^\/api\/journal$/.test(url)) return 'login' // журнал — любому вошедшему
     if (url === '/api/birthdays') return 'login' // полный список именинников — личные данные (экрану хватает /today)
+    if (/^\/api\/transfer\/(estimate|export)$/.test(url)) return 'login' // выгрузка в файл — только после входа (права на части — в transfer.js)
     return /^\/api\/(backup\/(snapshot\/|mirror$)|users(\/|$)|access$)/.test(url) ? 'admin' : null
   }
   if (OPEN_WRITES.some((re) => re.test(url))) return null
