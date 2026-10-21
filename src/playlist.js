@@ -29,6 +29,7 @@ export const SLIDE_TITLES = {
   news: 'Новость',
   countdown: 'Отсчёт',
   menu: 'Меню столовой',
+  birthdays: 'Именинники',
   deck: 'Колода',
   winners: 'Победители',
 }
@@ -92,6 +93,7 @@ export function makeSlide(type, mediaId) {
   }
   if (type === 'countdown') return { id: newId(), type, on: true, title: '', date: '', time: '', note: '', theme: '6', duration: 15 }
   if (type === 'menu') return { id: newId(), type, on: true, title: 'Меню на сегодня', theme: '7', duration: 15, twoWeeks: false, days: {} }
+  if (type === 'birthdays') return { id: newId(), type, on: true, title: 'С днём рождения!', full: false, theme: 'sunset', anim: 'rise', duration: 10 }
   if (type === 'deck') return { id: newId(), type, on: true, deck: mediaId, mode: 'next' }
   if (type === 'schedule') return { id: newId(), type, on: true, duration: 15, grades: [] }
   if (type === 'changes') return { id: newId(), type, on: true, duration: 20, skipEmpty: true }
@@ -102,7 +104,7 @@ export function makeSlide(type, mediaId) {
 // шаблон слайда: 'full' — весь экран, 'panel' — содержимое слева, справа панель с часами, звонками и изменениями
 export const LAYOUT_TITLES = { full: 'Весь экран', panel: 'С панелью справа' }
 /** Есть ли у слайда шаблон (фото, видео, новость, победители, отсчёт, колода). Табло расписания всегда во весь экран. */
-export const hasLayout = (it) => ['image', 'video', 'news', 'winners', 'countdown', 'menu', 'deck'].includes(it.type)
+export const hasLayout = (it) => ['image', 'video', 'news', 'winners', 'countdown', 'menu', 'birthdays', 'deck'].includes(it.type)
 /** Шаблон, по которому слайд реально показывается: свой у слайда или общий. */
 export const layoutOf = (it) => (hasLayout(it) ? it.layout || playlist.layout || 'full' : 'full')
 
@@ -120,6 +122,7 @@ export function slideTitle(it) {
     return 'До ' + (it.title || '…') + left
   }
   if (it.type === 'menu') return 'Меню столовой'
+  if (it.type === 'birthdays') return 'Именинники дня'
   if (it.type === 'deck') return deckById(it.deck)?.name || 'Колода удалена'
   return mediaById(it.media)?.name || 'Файл удалён'
 }

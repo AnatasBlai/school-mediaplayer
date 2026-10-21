@@ -32,6 +32,8 @@ const FILES = [
   'src/deckText.js', // его импортирует server/decks.js
   'src/catalog.js', // его импортируют server/playlist.js и server/decks.js
   'src/dataDiff.js', // его импортирует server/journal.js
+  'src/birthdays.js', // его импортирует server/birthdays.js
+  'src/scheduleImport.js', // его импортирует src/birthdays.js
 ]
 const DIRS = ['server', 'dist']
 // kiosk-settings.txt — настройки конкретного ПК: при обновлении не затираем

@@ -19,6 +19,8 @@ import NewsSlide from './NewsSlide.vue'
 import WinnersSlide from './WinnersSlide.vue'
 import CountdownSlide from './CountdownSlide.vue'
 import MenuSlide from './MenuSlide.vue'
+import BirthdaysSlide from './BirthdaysSlide.vue'
+import { todayBirthdays, todayReady } from '../birthdaysStore.js'
 import DeckSlide from './DeckSlide.vue'
 import { ruleState, isBlanked, countdownState, screenAllowed } from '../rules.js'
 import Ticker from './Ticker.vue'
@@ -50,6 +52,7 @@ function playable(it) {
   if (it.type === 'winners') return winnerScreensOf(it).length > 0
   if (it.type === 'countdown') return !!it.date && !countdownState(it, now.value).over
   if (it.type === 'menu') return !!menuDay(it, now.value, afterLessons(now.value))
+  if (it.type === 'birthdays') return todayBirthdays(it.full).length > 0
   if (it.type === 'deck') return decksLoaded.value && (deckById(it.deck)?.cards.length || 0) > 0
   return mediaById(it.media)?.type === it.type
 }
@@ -131,8 +134,9 @@ watch(
   (gone) => gone && advance(),
 )
 
-// старт: ждём плейлист, медиатеку и колоды (иначе слайды в начале плейлиста пропустятся), но не дольше 5 с
-const ready = computed(() => playlistLoaded.value && mediaLoaded.value && decksLoaded.value)
+// старт: ждём плейлист, медиатеку, колоды и именинников (иначе слайды в начале плейлиста пропустятся), но не дольше 5 с
+const birthdaysReady = computed(() => playlist.items.every((it) => it.type !== 'birthdays' || todayReady(it.full)))
+const ready = computed(() => playlistLoaded.value && mediaLoaded.value && decksLoaded.value && birthdaysReady.value)
 const startTimer = setTimeout(() => !cur.value && advance(), 5000)
 watch(ready, (r) => r && !cur.value && advance(), { immediate: true })
 
@@ -226,6 +230,13 @@ onBeforeUnmount(() => {
       />
       <MenuSlide
         v-else-if="s.item.type === 'menu'"
+        :item="s.item"
+        :active="s.role === 'active'"
+        :layout="layoutOf(s.item)"
+        @done="onDone(s)"
+      />
+      <BirthdaysSlide
+        v-else-if="s.item.type === 'birthdays'"
         :item="s.item"
         :active="s.role === 'active'"
         :layout="layoutOf(s.item)"

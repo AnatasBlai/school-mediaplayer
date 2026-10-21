@@ -5,7 +5,7 @@ import { decks } from '../decks.js'
 import { playlist, BUILTIN_TEMPLATES } from '../playlist.js'
 import { can } from './auth.js'
 
-const emit = defineEmits(['add', 'template', 'rename-template', 'remove-template']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | menu | deck; template(шаблон)
+const emit = defineEmits(['add', 'template', 'rename-template', 'remove-template']) // add(type, deckId?)  type: media | schedule | changes | news | winners | countdown | menu | birthdays | deck; template(шаблон)
 
 const KINDS = [
   { type: 'media', icon: '▣', title: 'Фото или видео', note: 'Файлы из медиатеки' },
@@ -15,6 +15,7 @@ const KINDS = [
   { type: 'winners', icon: '🏆', title: 'Победители', note: 'Пьедестал и призёры по классам' },
   { type: 'countdown', icon: '⏳', title: 'Обратный отсчёт', note: 'Сколько дней до события' },
   { type: 'menu', icon: '🍽', title: 'Меню столовой', note: 'Меню на сегодня по дням недели' },
+  { type: 'birthdays', icon: '🎂', title: 'Именинники', note: 'Сам поздравляет с днём рождения' },
 ]
 
 const open = ref(false)
@@ -212,6 +213,10 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #3c9a4a, #0c4a2a);
   font-size: 15px;
 }
+.ico.birthdays {
+  background: linear-gradient(135deg, #e04a8a, #6a0c3a);
+  font-size: 15px;
+}
 .ico.tpl {
   background: linear-gradient(135deg, #2f9a8a, #0c3a4a);
   font-size: 16px;
@@ -295,6 +300,9 @@ onBeforeUnmount(() => {
 }
 .dot.canteen {
   background: #3c9a4a;
+}
+.dot.birthdays {
+  background: #e04a8a;
 }
 .dot.winners {
   background: #e0b030;

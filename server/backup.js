@@ -31,7 +31,7 @@ const RETRY = 3600e3 // после ошибки — повтор не чаще �
 // их в копии не кладём и не восстанавливаем)
 const isDataFile = (f) => f.endsWith('.json') && !['backup.json', 'auth.json', 'users.json', 'sessions.json', 'screens.json'].includes(f)
 // у этих файлов при восстановлении ставим свежий updatedAt, иначе экраны посчитают данные старыми и не загрузят
-const STAMPED = ['schedule.json', 'playlist.json', 'decks.json']
+const STAMPED = ['schedule.json', 'playlist.json', 'decks.json', 'birthdays.json']
 
 // ---------- настройки ----------
 let settings = null
@@ -335,6 +335,7 @@ async function runRestore(name, only) {
   if (files.includes('schedule.json')) broadcast('data', { updatedAt: now })
   if (files.includes('playlist.json')) broadcast('playlist', { updatedAt: now })
   if (files.includes('decks.json')) broadcast('decks', { updatedAt: now })
+  if (files.includes('birthdays.json')) broadcast('birthdays', { updatedAt: now })
   if (files.includes('media.json')) broadcast('media')
 }
 

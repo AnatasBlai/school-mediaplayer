@@ -153,6 +153,13 @@ export function cleanItem(x) {
       }))
       if (meals.length) it.days[k] = meals
     }
+  } else if (x.type === 'birthdays') {
+    // именинники дня: сам список — data/birthdays.json (server/birthdays.js), в слайде только оформление
+    it.title = str(x.title, 60)
+    it.full = !!x.full // «Имя Фамилия» вместо «Имя Ф.»
+    it.theme = THEMES.includes(String(x.theme)) ? String(x.theme) : '6'
+    it.anim = NEWS_ANIMS.includes(x.anim) ? x.anim : 'none'
+    it.duration = secs(x.duration, 10) // секунд на один экран
   } else if (x.type === 'deck') {
     // колода карточек (data/decks.json): каждый показ — следующая карточка или одна карточка на весь день
     if (!/^[a-z0-9]{4,32}$/.test(x.deck || '')) return null

@@ -1,7 +1,7 @@
 // Журнал правок: кто, когда и что поменял; откат отдельной правки.
 //   data/journal/<ГГГГ-ММ>.json  { items: [{ id, at, until, user, name, ip, area, summary: [строки], version?, kind?, revertOf? }] }
-//   data/history/<schedule|playlist|decks>/<мс>.json — файл ДО первой записи группы (по нему идёт откат)
-// area: schedule | playlist | decks | media | system. Группировка: записи одного человека в один файл с паузами меньше
+//   data/history/<schedule|playlist|decks|birthdays>/<мс>.json — файл ДО первой записи группы (по нему идёт откат)
+// area: schedule | playlist | decks | birthdays | media | system. Группировка: записи одного человека в один файл с паузами меньше
 // 2 минут — одна запись (правка ячеек шлёт PUT каждые 300 мс). Хранится 60 дней, но не меньше 50 версий на файл.
 // logChange(req, area, before, after, opts) — одна функция для всех мест записи; сбой журнала запись не ломает.
 // API: GET /api/journal?area=&user=&day=&before=&since=&limit=; POST /api/journal/<id>/revert (право на раздел записи).
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { broadcast } from './events.js'
 import { nextUpdated } from './conflict.js'
 import { whoIs, can } from './auth.js'
-import { diffSchedule, diffPlaylist, diffDecks } from '../src/dataDiff.js'
+import { diffSchedule, diffPlaylist, diffDecks, diffBirthdays } from '../src/dataDiff.js'
 
 const DATA = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
 const JOURNAL = path.join(DATA, 'journal')
@@ -27,6 +27,7 @@ const AREAS = {
   schedule: { file: 'schedule.json', event: 'data', right: 'schedule' },
   playlist: { file: 'playlist.json', event: 'playlist', right: 'playlist' },
   decks: { file: 'decks.json', event: 'decks', right: 'decks' },
+  birthdays: { file: 'birthdays.json', event: 'birthdays', right: 'playlist' },
 }
 
 const open = new Map() // раздел → { id, user, last, start } — группа, в которую ещё можно дописывать
@@ -96,7 +97,8 @@ function dict() {
 }
 function summaryOf(area, a, b) {
   a = a || {}
-  const lines = area === 'schedule' ? diffSchedule(a, b) : area === 'playlist' ? diffPlaylist(a, b, dict()) : diffDecks(a, b, { journal: true })
+  const lines =
+    area === 'schedule' ? diffSchedule(a, b) : area === 'playlist' ? diffPlaylist(a, b, dict()) : area === 'birthdays' ? diffBirthdays(a, b) : diffDecks(a, b, { journal: true })
   return lines.length ? lines : ['Прочие настройки']
 }
 

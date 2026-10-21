@@ -1,10 +1,10 @@
-// Сравнение двух версий данных «по-человечески»: расписание, плейлист, колоды, медиатека.
+// Сравнение двух версий данных «по-человечески»: расписание, плейлист, колоды, именинники, медиатека.
 // Без Vue и без импортов — годится и для окна возврата из копии, и для журнала правок.
 // diffX(a, b) — что изменится, если данные a заменить данными b (a — текущие, b — из снимка).
 // Результат — массив строк; пустой массив — разницы нет.
 
 const DAYS = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-const SLIDE_NAMES = { schedule: 'Расписание', changes: 'Изменения', image: 'Фото', video: 'Видео', news: 'Новость', countdown: 'Отсчёт', menu: 'Меню столовой', deck: 'Колода', winners: 'Победители' }
+const SLIDE_NAMES = { schedule: 'Расписание', changes: 'Изменения', image: 'Фото', video: 'Видео', news: 'Новость', countdown: 'Отсчёт', menu: 'Меню столовой', birthdays: 'Именинники', deck: 'Колода', winners: 'Победители' }
 
 const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null)
 const plural = (n, one, few, many) => {
@@ -100,6 +100,7 @@ export function slideName(it, dict = {}) {
   if (it.type === 'winners') return it.title || 'Победители без заголовка'
   if (it.type === 'countdown') return 'До ' + (it.title || '…')
   if (it.type === 'menu') return 'Меню столовой'
+  if (it.type === 'birthdays') return 'Именинники дня'
   if (it.type === 'deck') return dict.decks?.[it.deck] || 'Колода'
   return dict.media?.[it.media] || SLIDE_NAMES[it.type] || 'Слайд'
 }
@@ -152,6 +153,22 @@ export function diffDecks(a, b, opts = {}) {
     if (parts.length) out.push(`Колода «${y.name}»: ${parts.join(', ')}`)
   }
   return limitLines(out)
+}
+
+// ---------- именинники ----------
+
+/** Только числа, без имён — список именинников это личные данные. */
+export function diffBirthdays(a, b, opts = {}) {
+  const ma = new Map(arr(a?.items).map((x) => [x.id, x]))
+  const mb = new Map(arr(b?.items).map((x) => [x.id, x]))
+  const added = [...mb.keys()].filter((id) => !ma.has(id)).length
+  const gone = [...ma.keys()].filter((id) => !mb.has(id)).length
+  const changed = [...mb].filter(([id, x]) => ma.has(id) && !same(x, ma.get(id))).length
+  const out = []
+  if (added) out.push(`Именинники: ${opts.journal === false ? 'вернутся' : 'добавлено'} ${count(added, 'человек', 'человека', 'человек')}`)
+  if (gone) out.push(`Именинники: ${opts.journal === false ? 'пропадут' : 'удалено'} ${count(gone, 'человек', 'человека', 'человек')}`)
+  if (changed) out.push(`Именинники: исправлено ${count(changed, 'запись', 'записи', 'записей')}`)
+  return out
 }
 
 // ---------- медиатека ----------

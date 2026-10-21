@@ -29,6 +29,10 @@ import NewsEditor from './NewsEditor.vue'
 import WinnersEditor from './WinnersEditor.vue'
 import CountdownEditor from './CountdownEditor.vue'
 import MenuEditor from './MenuEditor.vue'
+import BirthdaysEditor from './BirthdaysEditor.vue'
+import BirthdaysModal from './BirthdaysModal.vue'
+import { todayBirthdays } from '../birthdaysStore.js'
+import { birthdayScreens } from '../birthdays.js'
 import AddSlideMenu from './AddSlideMenu.vue'
 import ScreenSettings from './ScreenSettings.vue'
 import SlideSettings from './SlideSettings.vue'
@@ -60,6 +64,7 @@ function secondsOf(it) {
   if (it.type === 'deck') return deckSeconds(it)
   if (it.type === 'winners') return winnerScreensOf(it).length * it.duration
   if (it.type === 'menu') return menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals) * it.duration
+  if (it.type === 'birthdays') return birthdayScreens(todayBirthdays(it.full)).length * it.duration
   return it.duration
 }
 /** Сколько в среднем идёт одна карточка колоды. */
@@ -83,6 +88,7 @@ function summaryOf(it) {
   if (it.type === 'video') p.push('до конца' + (f?.duration ? ` (${fmtDuration(f.duration)})` : ''))
   else if (it.type === 'deck') p.push(`≈ ${deckSeconds(it)} с карточка`)
   else if (it.type === 'winners') p.push(`${winnerScreensOf(it).length} экр. × ${it.duration} с`)
+  else if (it.type === 'birthdays') p.push(`${birthdayScreens(todayBirthdays(it.full)).length} экр. × ${it.duration} с`)
   else if (it.type === 'menu') p.push(`${menuPageCount(menuDay(it, now.value, afterLessons(now.value))?.meals)} экр. × ${it.duration} с`)
   else p.push(it.type === 'schedule' ? `${it.duration} с на параллель` : `${it.duration} с`)
   if (it.type === 'changes' && it.skipEmpty) p.push('пропускается, если изменений нет')
@@ -97,9 +103,14 @@ function menuDays(it) {
   const on = DAY_SHORT.slice(0, 6).filter((_, i) => [...(it.days[i + 1] || []), ...(it.days[i + 8] || [])].some((m) => m.lines.trim()))
   return on.length ? 'меню: ' + on.join(', ') : 'меню пока не заполнено'
 }
+/** Сколько именинников сегодня. */
+function birthdaysToday(it) {
+  const n = todayBirthdays(it.full).length
+  return n ? `сегодня ${n} ${plural(n, 'именинник', 'именинника', 'именинников')}` : 'сегодня именинников нет — слайд пропускается'
+}
 /** Текст новости / подпись отсчёта — хвостом сводки. */
 const snippetOf = (it) =>
-  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
+  it.type === 'news' ? it.text : it.type === 'countdown' ? it.note : it.type === 'menu' ? menuDays(it) : it.type === 'birthdays' ? birthdaysToday(it) : it.type === 'winners' ? it.groups.map((g) => g.name.trim()).filter(Boolean).join(', ') : ''
 
 // ---------- настройки экрана (окно с вкладками) ----------
 const calOpen = ref(false) // календарь показов
@@ -129,6 +140,7 @@ function settingsEdit() {
   if (it?.type === 'winners') winEdit.value = it
   if (it?.type === 'countdown') cdEdit.value = it
   if (it?.type === 'menu') menuEdit.value = it
+  if (it?.type === 'birthdays') bdEdit.value = it
 }
 
 function remove(i) {
@@ -142,6 +154,7 @@ function copySlide(i) {
   if (copy.type === 'winners') winEdit.value = playlist.items[i + 1]
   if (copy.type === 'countdown') cdEdit.value = playlist.items[i + 1]
   if (copy.type === 'menu') menuEdit.value = playlist.items[i + 1]
+  if (copy.type === 'birthdays') bdEdit.value = playlist.items[i + 1]
 }
 function settingsCopy() {
   const i = items.value.indexOf(setItem.value)
@@ -193,6 +206,10 @@ function onAdd(type, deck) {
   else if (type === 'winners') addWinners()
   else if (type === 'countdown') addCountdown()
   else if (type === 'menu') addMenu()
+  else if (type === 'birthdays') {
+    playlist.items.push(makeSlide('birthdays'))
+    bdEdit.value = playlist.items[playlist.items.length - 1]
+  }
   else if (type === 'deck') playlist.items.push(makeSlide('deck', deck))
   else playlist.items.push(makeSlide(type))
 }
@@ -206,6 +223,7 @@ function onTemplate(t) {
   if (it.type === 'winners') winEdit.value = added
   if (it.type === 'countdown') cdEdit.value = added
   if (it.type === 'menu') menuEdit.value = added
+  if (it.type === 'birthdays') bdEdit.value = added
 }
 function renameTemplate(t) {
   const name = prompt('Новое название шаблона:', t.name)
@@ -263,6 +281,9 @@ function closeCountdown() {
 }
 // меню столовой: окно правки; меню без единого блюда при закрытии убираем
 const menuEdit = ref(null)
+// именинники: окно слайда и окно списка (список один на всё табло)
+const bdEdit = ref(null)
+const bdListOpen = ref(false)
 function addMenu() {
   playlist.items.push(makeSlide('menu'))
   menuEdit.value = playlist.items[playlist.items.length - 1]
@@ -335,6 +356,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           <b :class="{ on: playlist.ticker.on && tickerNow }">{{ tickerText }}</b>
         </button>
         <button class="a-btn cal-btn" data-ro-allow @click="calOpen = true">📅 Календарь показов</button>
+        <button class="a-btn cal-btn" data-ro-allow @click="bdListOpen = true">🎂 Именинники</button>
       </div>
 
       <!-- клик по блоку открывает экран в новой вкладке (кнопки внутри — свои действия) -->
@@ -394,6 +416,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <span v-else-if="it.type === 'winners'">🏆</span>
             <span v-else-if="it.type === 'countdown'">⏳</span>
             <span v-else-if="it.type === 'menu'">🍽</span>
+            <span v-else-if="it.type === 'birthdays'">🎂</span>
             <span v-else-if="it.type === 'deck'">?!</span>
             <span v-else-if="!fileOf(it)">?</span>
             <span v-if="it.type === 'video'" class="badge">▶</span>
@@ -444,6 +467,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <WinnersEditor v-if="winEdit" :item="winEdit" @close="closeWinners" />
     <CountdownEditor v-if="cdEdit" :item="cdEdit" @close="closeCountdown" />
     <MenuEditor v-if="menuEdit" :item="menuEdit" @close="closeMenu" />
+    <BirthdaysEditor v-if="bdEdit" :item="bdEdit" @close="bdEdit = null" />
+    <BirthdaysModal v-if="bdListOpen" @close="bdListOpen = false" />
 
     <!-- выбор файлов из медиатеки -->
     <div v-if="picker.open" class="modal-back" @mousedown.self="picker.open = false">
@@ -734,6 +759,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .thumb.news {
   background: linear-gradient(135deg, #2c74c0, #0c2c68);
   font-size: 15px;
+}
+.thumb.birthdays {
+  background: linear-gradient(135deg, #e04a8a, #6a0c3a);
+  font-size: 22px;
 }
 .thumb.menu {
   background: linear-gradient(135deg, #3c9a4a, #0c4a2a);

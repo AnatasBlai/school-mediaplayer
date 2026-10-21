@@ -9,11 +9,12 @@ const AREAS = [
   { id: 'schedule', title: 'Расписание' },
   { id: 'playlist', title: 'Плейлист' },
   { id: 'decks', title: 'Колоды' },
+  { id: 'birthdays', title: 'Именинники' },
   { id: 'media', title: 'Медиатека' },
   { id: 'system', title: 'Пользователи и копии' },
 ]
 const areaTitle = (id) => AREAS.find((a) => a.id === id)?.title || id
-const REVERTABLE = ['schedule', 'playlist', 'decks'] // право на раздел = его id
+const REVERTABLE = { schedule: 'schedule', playlist: 'playlist', decks: 'decks', birthdays: 'playlist' } // раздел → нужное право
 
 const items = ref([])
 const people = ref([])
@@ -60,7 +61,7 @@ async function load(append = false) {
 }
 onMounted(() => load())
 
-const canRevert = (e) => REVERTABLE.includes(e.area) && !!e.version && can(e.area)
+const canRevert = (e) => !!REVERTABLE[e.area] && !!e.version && can(REVERTABLE[e.area])
 const brief = (e) => {
   const s = e.summary || []
   return s.slice(0, 2).join('; ') + (s.length > 2 ? ` … (ещё ${s.length - 2})` : '')

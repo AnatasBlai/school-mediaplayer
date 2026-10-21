@@ -4,6 +4,7 @@
 //   /api/playlist — плейлист экрана (server/playlist.js)
 //   /api/screens — что сейчас показывают экраны (server/screens.js)
 //   /api/decks*  — колоды карточек: факты, вопросы, загадки (server/decks.js)
+//   /api/birthdays* — именинники: список (после входа) и «сегодня» для экрана (server/birthdays.js)
 //   /api/backup* — резервные копии data/ и media/ (server/backup.js)
 //   /api/media*  и /media/* — медиатека (server/media.js)
 //   /api/status  — состояние системы: диск, копии, версия (server/status.js)
@@ -17,6 +18,7 @@ import { handleMediaApi, handleMediaFiles } from './server/media.js'
 import { handlePlaylist } from './server/playlist.js'
 import { handleScreens } from './server/screens.js'
 import { handleDecks } from './server/decks.js'
+import { handleBirthdays } from './server/birthdays.js'
 import { handleBackup } from './server/backup.js'
 import { handleStatus } from './server/status.js'
 import { isAllowed, handleAuth } from './server/auth.js'
@@ -130,7 +132,7 @@ export function handleApi(req, res) {
     handleScreens(req, res)
     return true
   }
-  return handleJournal(req, res) || handleDecks(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
+  return handleJournal(req, res) || handleDecks(req, res) || handleBirthdays(req, res) || handleBackup(req, res) || handleMediaApi(req, res) || handleMediaFiles(req, res)
 }
 
 export function apiPlugin() {

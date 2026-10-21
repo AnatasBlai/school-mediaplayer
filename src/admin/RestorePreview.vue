@@ -2,7 +2,7 @@
 // Окно «Что изменится, если вернуть снимок»: сравнение снимка с текущими данными и выбор, что вернуть.
 // Сравнивает src/dataDiff.js; возвращает сервер (POST /api/backup/restore { name, files }).
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { diffSchedule, diffPlaylist, diffDecks, diffMedia } from '../dataDiff.js'
+import { diffSchedule, diffPlaylist, diffDecks, diffBirthdays, diffMedia } from '../dataDiff.js'
 
 const props = defineProps({ name: String, title: String }) // title — «14.10.2026 18:00»
 const emit = defineEmits(['close', 'restored'])
@@ -23,9 +23,9 @@ async function getJson(url) {
 async function load() {
   try {
     const snap = (f) => getJson(`/api/backup/snapshot/${encodeURIComponent(props.name)}/${f}`)
-    const [sSched, sPlay, sDecks, sMedia, cSched, cPlay, cDecks, cMedia, mirror] = await Promise.all([
-      snap('schedule.json'), snap('playlist.json'), snap('decks.json'), snap('media.json'),
-      getJson('/api/data'), getJson('/api/playlist'), getJson('/api/decks'), getJson('/api/media'),
+    const [sSched, sPlay, sDecks, sMedia, sBirth, cSched, cPlay, cDecks, cMedia, cBirth, mirror] = await Promise.all([
+      snap('schedule.json'), snap('playlist.json'), snap('decks.json'), snap('media.json'), snap('birthdays.json'),
+      getJson('/api/data'), getJson('/api/playlist'), getJson('/api/decks'), getJson('/api/media'), getJson('/api/birthdays'),
       getJson('/api/backup/mirror').catch(() => null),
     ])
     // названия для слайдов — из обеих медиатек и обоих наборов колод
@@ -37,6 +37,7 @@ async function load() {
       mk('schedule.json', 'Расписание', !!sSched, sSched ? diffSchedule(cSched, sSched) : []),
       mk('playlist.json', 'Плейлист', !!sPlay, sPlay ? diffPlaylist(cPlay, sPlay, dict) : []),
       mk('decks.json', 'Колоды', !!sDecks, sDecks ? diffDecks(cDecks, sDecks) : []),
+      mk('birthdays.json', 'Именинники', !!sBirth, sBirth ? diffBirthdays(cBirth, sBirth, { journal: false }) : []),
       mk('media.json', 'Медиатека', !!sMedia, sMedia ? diffMedia(cMedia, sMedia, mirror ? new Set(mirror.files) : null) : []),
     ]
   } catch (e) {

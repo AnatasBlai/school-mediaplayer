@@ -11,6 +11,7 @@
 //   GET/POST /api/users, PUT/DELETE /api/users/<id> — только «Администратор»; в ответах нет salt/hash.
 //        Пока пользователей нет, POST /api/users открыт и создаёт первого администратора (и сразу входит).
 // Отчёты экранов (POST /api/screens) и «взять карточку» (POST /api/decks/<id>/take) идут без входа.
+// Чтение закрыто у копий, пользователей, журнала и полного списка именинников (GET /api/birthdays).
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -148,6 +149,7 @@ const WRITE_RIGHTS = [
   [/^\/api\/playlist$/, 'playlist'], // слайды, бегущая строка, гашение, срочный режим
   [/^\/api\/screens\//, 'playlist'], // «убрать экран из списка» — в разделе «Плейлист»
   [/^\/api\/decks(\/|$)/, 'decks'],
+  [/^\/api\/birthdays$/, 'playlist'], // список именинников — в разделе «Плейлист»
   [/^\/api\/media(\/|$)/, 'media'],
   [/^\/api\/journal\/[\w-]+\/revert$/, 'login'], // право на раздел записи проверяет journal.js
 ]
@@ -156,6 +158,7 @@ function rightFor(method, url) {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
     // содержимое снимков и пользователи — только администратору
     if (/^\/api\/journal$/.test(url)) return 'login' // журнал — любому вошедшему
+    if (url === '/api/birthdays') return 'login' // полный список именинников — личные данные (экрану хватает /today)
     return /^\/api\/(backup\/(snapshot\/|mirror$)|users(\/|$))/.test(url) ? 'admin' : null
   }
   if (OPEN_WRITES.some((re) => re.test(url))) return null
